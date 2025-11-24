@@ -18,6 +18,9 @@ Name = Letter , { Letter | Digit } ;
 Integer = Digit , { Digit } ;
 String = '"' , { AnyButQuote } , '"' ;
 
+Comment = "#" , { AnyButNewline } ;
+
 Letter = "a" .. "z" | "A" .. "Z" | "_" ;
 Digit = "0" .. "9" ;
-AnyButQuote = ... ;
+AnyButQuote = ? any character except '"' ? ;
+AnyButNewline = ? any character except '\n' ? ;
