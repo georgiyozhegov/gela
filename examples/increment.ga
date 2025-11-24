@@ -1,0 +1,3 @@
+let a = 123
+let increment = x -> x + 1
+let b = increment a
