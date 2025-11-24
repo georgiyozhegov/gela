@@ -1,0 +1,23 @@
+Program = { Declaration } ;
+
+Declaration = "let" , Name , "=" , Expression ;
+
+Expression = Literal | Atom | Application | Binary ;
+
+Application = Atom , { Atom } ;
+
+Binary = Atom , BinaryOperator , Atom ;
+BinaryOperator = "+" | "-" | "->" | "$" | .. ;
+
+Atom = Literal | Parenthesized ;
+
+Parenthesized = "(" , Expression , ")" ;
+Literal = Name | Integer | String ;
+
+Name = Letter , { Letter | Digit } ;
+Integer = Digit , { Digit } ;
+String = '"' , { AnyButQuote } , '"' ;
+
+Letter = "a" .. "z" | "A" .. "Z" | "_" ;
+Digit = "0" .. "9" ;
+AnyButQuote = ... ;
