@@ -8,7 +8,8 @@ pub fn lex(source: String) -> Vec<Token> {
 fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
     match this_and_next(chars)? {
         ('a'..='z' | 'A'..='Z' | '_', _) => {
-            let lexeme = eat(chars, |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '_'));
+            let lexeme =
+                eat(chars, |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '_'));
             match lexeme.as_str() {
                 "let" => Some(Token::Let),
                 _ => Some(Token::Name(lexeme)), // If it's not a keyword, then it's a name

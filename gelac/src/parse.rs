@@ -4,8 +4,10 @@ use crate::lex::Token;
 
 pub fn parse(tokens: Vec<Token>) -> Vec<Declaration> {
     let mut tokens = tokens.into_iter().peekable();
-    std::iter::from_fn(move || (tokens.peek().is_some()).then(|| parse_declaration(&mut tokens)))
-        .collect()
+    std::iter::from_fn(move || {
+        (tokens.peek().is_some()).then(|| parse_declaration(&mut tokens))
+    })
+    .collect()
 }
 
 fn parse_declaration(tokens: &mut Peekable<IntoIter<Token>>) -> Declaration {
@@ -20,7 +22,10 @@ fn parse_expression(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
     parse_binary(tokens, 0)
 }
 
-fn parse_binary(tokens: &mut Peekable<IntoIter<Token>>, min_precedence: u8) -> Expression {
+fn parse_binary(
+    tokens: &mut Peekable<IntoIter<Token>>,
+    min_precedence: u8,
+) -> Expression {
     let mut left = parse_application(tokens);
     while let Some(token) = tokens.peek() {
         let precedence = this_precedence(token);
@@ -30,7 +35,8 @@ fn parse_binary(tokens: &mut Peekable<IntoIter<Token>>, min_precedence: u8) -> E
         }
         // Peeked token is an operator, because its precedence > 0
         let operator = tokens.next().unwrap(); // Checked: peeked token is some
-        let right = parse_binary(tokens, next_precedence(&operator, precedence));
+        let right =
+            parse_binary(tokens, next_precedence(&operator, precedence));
         left = Expression::Binary(operator, Box::new(left), Box::new(right));
     }
     left
