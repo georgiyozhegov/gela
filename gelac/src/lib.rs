@@ -1,3 +1,9 @@
+mod lex;
+use lex::lex;
+
 pub fn run(source: String) {
-    todo!("Just execute the program")
+    let tokens = lex(source);
+    for token in tokens {
+        println!("{token:?}");
+    }
 }

@@ -1,6 +1,7 @@
-use std::fs;
+use std::{env, fs};
 
 fn main() {
-    let source = fs::read_to_string("../examples/variables.ga").unwrap();
+    let example = env::args().nth(1).unwrap();
+    let source = fs::read_to_string(format!("../examples/{example}.ga")).unwrap();
     gelac::run(source);
 }
