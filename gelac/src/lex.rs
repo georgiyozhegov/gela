@@ -58,8 +58,7 @@ fn this_and_next(chars: &Peekable<Chars>) -> Option<(char, Option<char>)> {
 fn eat(chars: &mut Peekable<Chars>, condition: fn(&char) -> bool) -> String {
     let mut buffer = String::new();
     while chars.peek().is_some_and(condition) {
-        // <- Here
-        buffer.push(chars.next().unwrap()); // Checked
+        buffer.push(chars.next().unwrap()); // Checked: peeked char is some
     }
     buffer
 }
