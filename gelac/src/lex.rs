@@ -9,7 +9,10 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
     match this_and_next(chars)? {
         ('a'..='z' | 'A'..='Z' | '_', _) => {
             let lexeme = eat(chars, |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '_'));
-            Some(Token::Name(lexeme))
+            match lexeme.as_str() {
+                "let" => Some(Token::Let),
+                _ => Some(Token::Name(lexeme)), // If it's not a keyword, then it's a name
+            }
         }
         ('0'..='9', _) => {
             let lexeme = eat(chars, |ch| matches!(ch, '0'..='9'));
@@ -63,11 +66,12 @@ fn eat(chars: &mut Peekable<Chars>, condition: fn(&char) -> bool) -> String {
     buffer
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Token {
     Name(String),
     Integer(i128),
     String(String),
+    Let,
     Plus,
     Equals,
     Arrow,

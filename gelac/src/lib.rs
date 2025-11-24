@@ -1,9 +1,12 @@
 mod lex;
+mod parse;
 use lex::lex;
+use parse::parse;
 
 pub fn run(source: String) {
     let tokens = lex(source);
-    for token in tokens {
-        println!("{token:?}");
+    let declarations = parse(tokens);
+    for d in declarations {
+        println!("{d:#?}");
     }
 }
