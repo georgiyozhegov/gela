@@ -29,6 +29,10 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             chars.next(); // Skip the trailing quote
             Some(Token::String(lexeme))
         }
+        ('#', _) => {
+            eat(chars, |ch| *ch != '\n'); // Skip until the next line
+            token(chars)
+        }
         ('+', _) => {
             chars.next();
             Some(Token::Plus)
