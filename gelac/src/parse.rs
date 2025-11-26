@@ -6,8 +6,7 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Declaration> {
     let mut tokens = tokens.into_iter().peekable();
     std::iter::from_fn(move || {
         (tokens.peek().is_some()).then(|| parse_declaration(&mut tokens))
-    })
-    .collect()
+    }) .collect()
 }
 
 fn parse_declaration(tokens: &mut Peekable<IntoIter<Token>>) -> Declaration {
@@ -53,7 +52,7 @@ fn this_precedence(token: &Token) -> u8 {
 
 fn next_precedence(token: &Token, this: u8) -> u8 {
     match token {
-        Token::Plus => this + 1,
+        Token::Plus | Token::Minus | Token::Asterisk | Token::Slash => this + 1,
         Token::Arrow => this, // Parse right-hand side first
         _ => this,
     }
@@ -63,7 +62,7 @@ fn parse_application(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
     let mut left = parse_atom(tokens);
     while let Some(token) = tokens.peek() {
         match token {
-            Token::Name(_) | Token::Integer(_) | Token::String(_) => {
+            Token::Name(_) | Token::Integer(_) | Token::String(_) | Token::OpenRound => {
                 let right = parse_atom(tokens);
                 left = Expression::Application(Box::new(left), Box::new(right));
             }
@@ -78,8 +77,16 @@ fn parse_atom(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
         Some(Token::Name(_)) => parse_name(tokens),
         Some(Token::Integer(_)) => parse_integer(tokens),
         Some(Token::String(_)) => parse_string(tokens),
+        Some(Token::OpenRound) => parse_parenthesized(tokens),
         tk => panic!("Expected atom, got: {tk:?}"),
     }
+}
+
+fn parse_parenthesized(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
+    eat(tokens, Token::OpenRound);
+    let inner = parse_expression(tokens);
+    eat(tokens, Token::CloseRound);
+    inner // There is no "parenthesized" node
 }
 
 fn parse_name(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {

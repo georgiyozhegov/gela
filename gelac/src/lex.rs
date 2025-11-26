@@ -58,6 +58,14 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             chars.next();
             Some(Token::Minus)
         }
+        ('(', _) => {
+            chars.next();
+            Some(Token::OpenRound)
+        }
+        (')', _) => {
+            chars.next();
+            Some(Token::CloseRound)
+        }
         (' ' | '\t' | '\n' | '\r', _) => {
             eat(chars, |ch| matches!(ch, ' ' | '\t' | '\n' | '\r')); // Just skip whitespace
             token(chars) // And lex an actual token
@@ -95,4 +103,6 @@ pub enum Token {
     Slash,
     Equals,
     Arrow,
+    OpenRound,
+    CloseRound,
 }
