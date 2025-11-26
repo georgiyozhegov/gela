@@ -37,6 +37,14 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             chars.next();
             Some(Token::Plus)
         }
+        ('*', _) => {
+            chars.next();
+            Some(Token::Asterisk)
+        }
+        ('/', _) => {
+            chars.next();
+            Some(Token::Slash)
+        }
         ('=', _) => {
             chars.next();
             Some(Token::Equals)
@@ -45,6 +53,10 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             chars.next();
             chars.next();
             Some(Token::Arrow)
+        }
+        ('-', _) => { // Put this branch after the "->" one
+            chars.next();
+            Some(Token::Minus)
         }
         (' ' | '\t' | '\n' | '\r', _) => {
             eat(chars, |ch| matches!(ch, ' ' | '\t' | '\n' | '\r')); // Just skip whitespace
@@ -78,6 +90,9 @@ pub enum Token {
     String(String),
     Let,
     Plus,
+    Minus,
+    Asterisk,
+    Slash,
     Equals,
     Arrow,
 }

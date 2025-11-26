@@ -44,7 +44,8 @@ fn parse_binary(
 
 fn this_precedence(token: &Token) -> u8 {
     match token {
-        Token::Plus => 2,
+        Token::Asterisk | Token::Slash => 3,
+        Token::Plus | Token::Minus => 2,
         Token::Arrow => 1,
         _ => 0, // Not a binary operator
     }
