@@ -6,7 +6,8 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Declaration> {
     let mut tokens = tokens.into_iter().peekable();
     std::iter::from_fn(move || {
         (tokens.peek().is_some()).then(|| parse_declaration(&mut tokens))
-    }) .collect()
+    })
+    .collect()
 }
 
 fn parse_declaration(tokens: &mut Peekable<IntoIter<Token>>) -> Declaration {
@@ -37,7 +38,8 @@ fn parse_binary(
         let right =
             parse_binary(tokens, next_precedence(&operator, precedence));
         left = match operator {
-            Token::Arrow => { // Lambda definition
+            Token::Arrow => {
+                // Lambda definition
                 let Expression::Name(parameter) = left else {
                     panic!("Expected lambda parameter, got: {right:?}");
                 };
@@ -71,7 +73,10 @@ fn parse_application(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
     let mut left = parse_atom(tokens);
     while let Some(token) = tokens.peek() {
         match token {
-            Token::Name(_) | Token::Integer(_) | Token::String(_) | Token::OpenRound => {
+            Token::Name(_)
+            | Token::Integer(_)
+            | Token::String(_)
+            | Token::OpenRound => {
                 let right = parse_atom(tokens);
                 left = Expression::Application(Box::new(left), Box::new(right));
             }

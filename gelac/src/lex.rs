@@ -54,7 +54,8 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             chars.next();
             Some(Token::Arrow)
         }
-        ('-', _) => { // Put this branch after the "->" one
+        ('-', _) => {
+            // Put this branch after the "->" one
             chars.next();
             Some(Token::Minus)
         }
