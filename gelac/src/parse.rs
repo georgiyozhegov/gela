@@ -28,7 +28,7 @@ fn parse_binary(
 ) -> Expression {
     let mut left = parse_application(tokens);
     while let Some(token) = tokens.peek() {
-        let precedence = this_precedence(token);
+        let precedence = current_precedence(token);
         // If precedence equals to 0, then the token isn't an operator
         if precedence == 0 || precedence < min_precedence {
             break;
@@ -52,7 +52,7 @@ fn parse_binary(
     left
 }
 
-fn this_precedence(token: &Token) -> u8 {
+fn current_precedence(token: &Token) -> u8 {
     match token {
         Token::Asterisk | Token::Slash => 3,
         Token::Plus | Token::Minus => 2,
@@ -61,11 +61,12 @@ fn this_precedence(token: &Token) -> u8 {
     }
 }
 
-fn next_precedence(token: &Token, this: u8) -> u8 {
+fn next_precedence(token: &Token, current: u8) -> u8 {
     match token {
-        Token::Plus | Token::Minus | Token::Asterisk | Token::Slash => this + 1,
-        Token::Arrow => this, // Parse right-hand side first
-        _ => this,
+        Token::Plus | Token::Minus | Token::Asterisk | Token::Slash => {
+            current + 1
+        } // Right-associative
+        _ => current, // Left-associative
     }
 }
 
