@@ -36,7 +36,16 @@ fn parse_binary(
         let operator = tokens.next().unwrap(); // Checked: peeked token is some
         let right =
             parse_binary(tokens, next_precedence(&operator, precedence));
-        left = Expression::Binary(operator, Box::new(left), Box::new(right));
+        left = match operator {
+            Token::Arrow => { // Lambda definition
+                let Expression::Name(parameter) = left else {
+                    panic!("Expected lambda parameter, got: {right:?}");
+                };
+                Expression::Lambda(parameter, Box::new(right))
+            }
+            // A normal binary expression
+            _ => Expression::Binary(operator, Box::new(left), Box::new(right)),
+        }
     }
     left
 }
@@ -135,5 +144,6 @@ pub enum Expression {
     Integer(i128),
     String(String),
     Binary(Token /* operator */, Box<Expression>, Box<Expression>),
+    Lambda(String /* parameter */, Box<Expression>),
     Application(Box<Expression>, Box<Expression>),
 }
