@@ -2,12 +2,14 @@ Program = { Declaration } ;
 
 Declaration = "let" , Name , "=" , Expression ;
 
-Expression = Literal | Atom | Application | Binary ;
+Expression = Literal | Atom | Application | Binary | Var ;
 
 Application = Atom , { Atom } ;
 
 Binary = Atom , BinaryOperator , Atom ;
 BinaryOperator = "+" | "-" | "->" | "$" | .. ;
+
+Var = "var" , Name , "=" , Expression , "in" , Expression ;
 
 Atom = Literal | Parenthesized ;
 

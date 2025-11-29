@@ -1,6 +1,6 @@
 let polynomial = a -> b -> c -> x ->
-    var ax = a * x * x in
-    var bx = a * x in
-    ax + bx + c
+    var axx = a * x * x in
+    var bx = b * x in
+    axx + bx + c
 
 let result = polynomial 2 3 4
