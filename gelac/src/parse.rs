@@ -93,7 +93,26 @@ fn parse_atom(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
         Some(Token::Integer(_)) => parse_integer(tokens),
         Some(Token::String(_)) => parse_string(tokens),
         Some(Token::OpenRound) => parse_parenthesized(tokens),
+        Some(Token::Var) => parse_var_in(tokens),
         tk => panic!("Expected atom, got: {tk:?}"),
+    }
+}
+
+fn parse_var_in(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
+    if matches!(tokens.peek(), Some(&Token::Var)) {
+        tokens.next();
+        let name = eat_name(tokens);
+        eat(tokens, Token::Equals);
+        let value = parse_expression(tokens);
+        eat(tokens, Token::In);
+        let body = parse_expression(tokens);
+        Expression::VarIn {
+            name,
+            value: Box::new(value),
+            body: Box::new(body),
+        }
+    } else {
+        parse_binary(tokens, 0)
     }
 }
 
@@ -152,4 +171,9 @@ pub enum Expression {
     Binary(Token /* operator */, Box<Expression>, Box<Expression>),
     Lambda(String /* parameter */, Box<Expression>),
     Application(Box<Expression>, Box<Expression>),
+    VarIn {
+        name: String,
+        value: Box<Expression>,
+        body: Box<Expression>,
+    },
 }

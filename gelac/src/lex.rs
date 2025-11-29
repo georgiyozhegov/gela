@@ -12,6 +12,8 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
                 eat(chars, |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '_'));
             match lexeme.as_str() {
                 "let" => Some(Token::Let),
+                "var" => Some(Token::Var),
+                "in" => Some(Token::In),
                 _ => Some(Token::Name(lexeme)), // If it's not a keyword, then it's a name
             }
         }
@@ -98,6 +100,8 @@ pub enum Token {
     Integer(i128),
     String(String),
     Let,
+    Var,
+    In,
     Plus,
     Minus,
     Asterisk,
