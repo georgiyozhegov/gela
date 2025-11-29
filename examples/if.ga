@@ -1,0 +1,2 @@
+# There is no boolean type yet, so we're using integer
+let result = if 0 then "True" else "False"
