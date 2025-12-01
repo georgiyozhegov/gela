@@ -1,0 +1,25 @@
+{
+  "name": "gela-language",
+  "displayName": "Gela Language",
+  "description": "Syntax highlighting for Gela",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.106.1"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "gela",
+      "aliases": ["Gela", "gela"],
+      "extensions": [".ga"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "gela",
+      "scopeName": "source.gela",
+      "path": "./syntaxes/gela.tmLanguage.json"
+    }]
+  }
+}
