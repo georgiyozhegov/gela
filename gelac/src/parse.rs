@@ -54,18 +54,21 @@ fn parse_binary(
 
 fn current_precedence(token: &Token) -> u8 {
     match token {
-        Token::Asterisk | Token::Slash => 3,
-        Token::Plus | Token::Minus => 2,
-        Token::Arrow => 1,
+        Token::Asterisk | Token::Slash => 4,
+        Token::Plus | Token::Minus => 3,
+        Token::Arrow => 2,
+        Token::Dollar => 1,
         _ => 0, // Not a binary operator
     }
 }
 
 fn next_precedence(token: &Token, current: u8) -> u8 {
     match token {
-        Token::Plus | Token::Minus | Token::Asterisk | Token::Slash => {
-            current + 1
-        } // Right-associative
+        Token::Plus
+        | Token::Minus
+        | Token::Asterisk
+        | Token::Slash
+        | Token::Dollar => current + 1, // Right-associative
         _ => current, // Left-associative
     }
 }
@@ -94,7 +97,26 @@ fn parse_atom(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
         Some(Token::String(_)) => parse_string(tokens),
         Some(Token::OpenRound) => parse_parenthesized(tokens),
         Some(Token::Var) => parse_var_in(tokens),
+        Some(Token::If) => parse_if(tokens),
         tk => panic!("Expected atom, got: {tk:?}"),
+    }
+}
+
+fn parse_if(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
+    if matches!(tokens.peek(), Some(Token::If)) {
+        tokens.next();
+        let condition = parse_expression(tokens);
+        eat(tokens, Token::Then);
+        let then = parse_expression(tokens);
+        eat(tokens, Token::Else);
+        let otherwise = parse_expression(tokens);
+        Expression::If {
+            condition: Box::new(condition),
+            then: Box::new(then),
+            otherwise: Box::new(otherwise),
+        }
+    } else {
+        parse_binary(tokens, 0)
     }
 }
 
@@ -175,5 +197,10 @@ pub enum Expression {
         name: String,
         value: Box<Expression>,
         body: Box<Expression>,
+    },
+    If {
+        condition: Box<Expression>,
+        then: Box<Expression>,
+        otherwise: Box<Expression>,
     },
 }

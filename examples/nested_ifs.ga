@@ -1,0 +1,8 @@
+let result =
+    if 1 then
+        "True"
+    else
+        if 1 then
+            "False and True"
+        else
+            "False and False"

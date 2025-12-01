@@ -14,6 +14,9 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
                 "let" => Some(Token::Let),
                 "var" => Some(Token::Var),
                 "in" => Some(Token::In),
+                "if" => Some(Token::If),
+                "else" => Some(Token::Else),
+                "then" => Some(Token::Then),
                 _ => Some(Token::Name(lexeme)), // If it's not a keyword, then it's a name
             }
         }
@@ -50,6 +53,10 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
         ('=', _) => {
             chars.next();
             Some(Token::Equals)
+        }
+        ('$', _) => {
+            chars.next();
+            Some(Token::Dollar)
         }
         ('-', Some('>')) => {
             chars.next();
@@ -102,11 +109,15 @@ pub enum Token {
     Let,
     Var,
     In,
+    If,
+    Then,
+    Else,
     Plus,
     Minus,
     Asterisk,
     Slash,
     Equals,
+    Dollar,
     Arrow,
     OpenRound,
     CloseRound,
