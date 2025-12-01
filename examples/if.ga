@@ -1,2 +1,12 @@
 # There is no boolean type yet, so we're using integer
 let result = if 0 then "True" else "False"
+
+# Nested ifs
+let result =
+    if 1 then
+        "True"
+    else
+        if 1 then
+            "False and True"
+        else
+            "False and False"
