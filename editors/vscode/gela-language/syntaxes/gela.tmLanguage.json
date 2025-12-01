@@ -1,32 +1,84 @@
 {
-	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-	"name": "Gela",
-	"patterns": [
-		{
-			"include": "#keywords"
-		},
-		{
-			"include": "#strings"
-		}
-	],
-	"repository": {
-		"keywords": {
-			"patterns": [{
-				"name": "keyword.control.gela",
-				"match": "\\b(let|var|in|if|else|then)\\b"
-			}]
-		},
-		"strings": {
-			"name": "string.quoted.double.gela",
-			"begin": "\"",
-			"end": "\"",
-			"patterns": [
-				{
-					"name": "constant.character.escape.gela",
-					"match": "\\\\."
-				}
-			]
-		}
-	},
-	"scopeName": "source.gela"
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Gela",
+  "scopeName": "source.gela",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#operators" },
+    { "include": "#numbers" },
+    { "include": "#strings" },
+    { "include": "#names" },
+    { "include": "#parentheses" },
+    { "include": "#equals" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.gela",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.gela",
+          "match": "\\b(let|var|in|if|then|else)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.gela",
+          "match": "(->|\\+|\\-|\\$|\\/|\\*)"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.integer.gela",
+          "match": "\\b\\d+\\b"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.gela",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.gela",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "names": {
+      "patterns": [
+        {
+          "name": "variable.other.gela",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+        }
+      ]
+    },
+    "parentheses": {
+      "patterns": [
+        {
+          "name": "punctuation.parenthesis.gela",
+          "match": "[()]"
+        }
+      ]
+    },
+    "equals": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.gela",
+          "match": "="
+        }
+      ]
+    }
+  }
 }
