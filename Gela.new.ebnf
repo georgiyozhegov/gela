@@ -4,7 +4,6 @@ Program =
 Statement =
   Declaration |
   Record |
-  Impl |
   Enum |
   Import ;
 
@@ -13,9 +12,6 @@ Declaration =
 
 Record =
   "record" , name , "{" , [ Field , { "," , Field } , [ "," ]  ] , "}" ;
-
-Impl =
-  "impl" , name , "{" , { Declaration } , "}" ;
 
 Field =
   name , ":" , name ;
@@ -63,7 +59,7 @@ New =
   name , "{" , [ SetField , { "," , SetField } , [ "," ]  ] , "}" ;
 
 SetField =
-  name , "=" , Expression ;
+  name , ":" , Expression ;
 
 ? All infix operators are right-associative ?
 
