@@ -1,3 +1,6 @@
+Program =
+  { Statement } ;
+
 Statement =
   Declaration |
   Record |
@@ -35,7 +38,7 @@ Expression =
   When |
   If |
   New |
-  InfixLowest ;
+  TypeCast ;
 
 Abstraction =
   name , "->" , Expression ;
@@ -63,6 +66,10 @@ SetField =
   name , "=" , Expression ;
 
 ? All infix operators are right-associative ?
+
+TypeCast =
+  InfixLowest |
+  ( InfixLowest , "::" , name ) ;
 
 InfixLowest =
   InfixLower |
