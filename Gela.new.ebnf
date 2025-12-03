@@ -1,0 +1,118 @@
+Statement =
+  Declaration |
+  Record |
+  Impl |
+  Enum |
+  Import ;
+
+Declaration =
+  "let" , name , "=" , Expression ;
+
+Record =
+  "record" , name , "{" , [ Field , { "," , Field } , [ "," ]  ] , "}" ;
+
+Impl =
+  "impl" , name , "{" , { Declaration } , "}" ;
+
+Field =
+  name , ":" , name ;
+
+Enum =
+  "enum" , name , "{" , [ name , { "," , name } , [ "," ]  ] , "}" ;
+
+Import =
+  "import" , Path , "{" , [ ImportItem , { "," , ImportItem } , [ "," ]  ] , "}" ;
+
+ImportItem = name , [ "as" , name ] ;
+
+? Doesn't conflict with "Property" since "Path" is used exclusively within the "Import" statement ?
+Path =
+  name , { "." , name } ;
+
+Expression =
+  Abstraction |
+  Bind |
+  When |
+  If |
+  New |
+  InfixLowest ;
+
+Abstraction =
+  name , "->" , Expression ;
+
+Bind =
+  "var" , name , "=" , Expression , "in" , Expression ;
+
+? The first "|" is optional and recommended only for multiline "When" expressions ?
+When =
+  "when" , [ "|" ] , WhenBranch , { "|" , WhenBranch } , WhenDefault ;
+
+WhenBranch =
+  Expression , "then" , Expression ;
+
+WhenDefault =
+  "else" , Expression ;
+
+If =
+  "if" , Expression , "then" , Expression , "else" , Expression ;
+
+New =
+  name , "{" , [ SetField , { "," , SetField } , [ "," ]  ] , "}" ;
+
+SetField =
+  name , "=" , Expression ;
+
+? All infix operators are right-associative ?
+
+InfixLowest =
+  InfixLower |
+  ( InfixLower , "$" , InfixLowest ) ;
+
+InfixLower =
+  InfixLow |
+  ( InfixLow , ( "and" | "or" ) , InfixLower ) ;
+
+InfixLow =
+  InfixHigh |
+  ( InfixHigh , ( "==" | "!=" | "<=" | ">=" | "<" | ">" ) , InfixLow ) ;
+
+InfixHigh =
+  InfixHigher |
+  ( InfixHigher , ( "+" | "-" ) , InfixHigh ) ;
+
+InfixHigher =
+  InfixHighest |
+  ( InfixHighest , ( "*" | "/" | "%" ) , InfixHigher ) ;
+
+InfixHighest =
+  Application |
+  ( Application , "^" , InfixHighest ) ;
+
+Application =
+  Atom , { Atom } ;
+
+Atom =
+  name |
+  number |
+  Parenthesized |
+  Property ;
+
+Parenthesized =
+  "(" , Expression , ")" ;
+
+Property =
+  name , "." , name ;
+
+? Double "_" is not allowed ?
+name =
+  letter , { letter | digit } , [ "?" | "!" ] ;
+
+letter =
+  "a" .. "z" | "A" .. "Z" | "_" ;
+
+? Trailing or double "_" is not allowed ?
+number =
+  [ "-" ] , digit , { digit | "_" } ;
+
+digit =
+  "0" .. "9" ;
