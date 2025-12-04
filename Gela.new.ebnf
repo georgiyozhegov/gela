@@ -92,19 +92,18 @@ InfixHighest =
   ( Application , "^" , InfixHighest ) ;
 
 Application =
-  Atom , { Atom } ;
+  Property , { Property } ;
+
+Property =
+  Atom , { "." , name } ;
 
 Atom =
   name |
   number |
-  Parenthesized |
-  Property ;
+  Parenthesized ;
 
 Parenthesized =
   "(" , Expression , ")" ;
-
-Property =
-  name , "." , name ;
 
 ? Double "_" is not allowed ?
 name =
