@@ -100,6 +100,7 @@ Property =
 Atom =
   name |
   number |
+  string |
   Parenthesized ;
 
 Parenthesized =
@@ -118,3 +119,6 @@ number =
 
 digit =
   "0" .. "9" ;
+
+string =
+  '"' , { ? any char except quote ? } , '"' ;
