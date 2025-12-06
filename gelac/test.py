@@ -4,14 +4,21 @@ import subprocess
 
 examples = os.listdir("../examples")
 
+ONLY_CODES = "--codes" in sys.argv
+NO_COLORS = "--bw" in sys.argv # "bw" stands for black & white
+SUCCESSFUL_CODES = [0]
+WIDTH = 80
+
 RED = "\033[91m"
 GREEN = "\033[92m"
 GRAY = "\033[90m"
 RESET = "\033[0m"
 
-ONLY_CODES = "--codes" in sys.argv
-SUCCESSFUL_CODES = [0]
-WIDTH = 80
+if NO_COLORS:
+    RED = ""
+    GREEN = ""
+    GRAY = ""
+    RESET = ""
 
 results = []
 
