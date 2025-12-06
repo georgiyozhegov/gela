@@ -3,15 +3,15 @@ Program =
 
 Statement =
   Declaration |
-  Record |
+  Struct |
   Enum |
   Import ;
 
 Declaration =
   "let" , name , "=" , Expression ;
 
-Record =
-  "record" , name , "{" , [ Field , { "," , Field } , [ "," ]  ] , "}" ;
+Struct =
+  "struct" , name , "{" , [ Field , { "," , Field } , [ "," ]  ] , "}" ;
 
 Field =
   name , ":" , name ;
