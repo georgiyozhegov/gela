@@ -4,7 +4,7 @@ import subprocess
 
 examples = os.listdir("../examples")
 
-ONLY_CODES = "--codes" in sys.argv
+FULL = "--full" in sys.argv
 NO_COLORS = "--bw" in sys.argv # "bw" stands for black & white
 SUCCESSFUL_CODES = [0]
 WIDTH = 80
@@ -29,7 +29,7 @@ for example in examples:
         ["cargo", "run", example, "-Awarnings"],
         capture_output=True,
     )
-    if not ONLY_CODES:
+    if FULL:
         if process.returncode not in SUCCESSFUL_CODES and process.stderr:
             print(f"{GRAY}[stderr]{RESET}")
             print(process.stderr.decode())
