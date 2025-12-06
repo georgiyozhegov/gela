@@ -1,0 +1,27 @@
+enum Day {
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+}
+
+let to_nat = day: Day ->
+    when
+    | day == Day.Monday then 1
+    | day == Day.Tuesday then 2
+    | day == Day.Wednesday then 3
+    | day == Day.Thursday then 4
+    | day == Day.Friday then 5
+    | day == Day.Saturday then 6
+    | day == Day.Sunday then 7
+    else unreachable
+    :: Nat
+
+let weekend? = day: Day ->
+    day == Day.Saturday or day == Day.Sunday :: Bool
+
+let today = Day.Saturday
+let having_party?: Bool = weekend? today

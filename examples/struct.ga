@@ -1,0 +1,7 @@
+struct Person {
+    name: String,
+    age: Nat,
+}
+
+let george = Person { name: "George", age: 16 }
+let his_age = george.age
