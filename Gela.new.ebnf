@@ -2,12 +2,12 @@ Program =
   { Statement } ;
 
 Statement =
-  Declaration |
+  Let |
   Struct |
   Enum |
   Import ;
 
-Declaration =
+Let =
   "let" , name , "=" , Expression ;
 
 Struct =

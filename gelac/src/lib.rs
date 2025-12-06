@@ -5,8 +5,8 @@ use parse::parse;
 
 pub fn run(source: String) {
     let tokens = lex(source);
-    let declarations = parse(tokens);
-    for d in declarations {
-        println!("{d:#?}");
+    let statements = parse(tokens);
+    for s in statements {
+        println!("{s:#?}");
     }
 }

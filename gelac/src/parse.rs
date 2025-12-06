@@ -2,20 +2,108 @@ use std::{iter::Peekable, vec::IntoIter};
 
 use crate::lex::Token;
 
-pub fn parse(tokens: Vec<Token>) -> Vec<Declaration> {
+pub fn parse(tokens: Vec<Token>) -> Vec<Statement> {
     let mut tokens = tokens.into_iter().peekable();
     std::iter::from_fn(move || {
-        (tokens.peek().is_some()).then(|| parse_declaration(&mut tokens))
+        (tokens.peek().is_some()).then(|| parse_statement(&mut tokens))
     })
     .collect()
 }
 
-fn parse_declaration(tokens: &mut Peekable<IntoIter<Token>>) -> Declaration {
+fn parse_statement(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
+    match tokens.peek().unwrap() /* Checked in "parse" */ {
+        Token::Let => parse_let(tokens),
+        Token::Struct => parse_struct(tokens),
+        Token::Enum => parse_enum(tokens),
+        Token::Import => parse_import(tokens),
+        tk => panic!("Expected statement, got {tk:?}"),
+    }
+}
+
+fn parse_let(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
     eat(tokens, Token::Let);
     let name = eat_name(tokens);
     eat(tokens, Token::Equals);
     let value = parse_expression(tokens);
-    Declaration { name, value }
+    Statement::Let(name, value)
+}
+
+fn parse_struct(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
+    eat(tokens, Token::Struct);
+    let name = eat_name(tokens);
+    eat(tokens, Token::OpenCurly);
+    let mut fields = Vec::new();
+    while tokens
+        .peek()
+        .is_some_and(|tk| !matches!(tk, Token::CloseCurly))
+    {
+        let name = eat_name(tokens);
+        eat(tokens, Token::Colon);
+        let ty = eat_name(tokens);
+        if tokens
+            .peek()
+            .is_none_or(|tk| !matches!(tk, Token::CloseCurly))
+        {
+            eat(tokens, Token::Comma);
+        }
+        fields.push((name, ty));
+    }
+    eat(tokens, Token::CloseCurly);
+    Statement::Struct(name, fields)
+}
+
+fn parse_enum(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
+    eat(tokens, Token::Enum);
+    let name = eat_name(tokens);
+    eat(tokens, Token::OpenCurly);
+    let mut variants = Vec::new();
+    while tokens
+        .peek()
+        .is_some_and(|tk| !matches!(tk, Token::CloseCurly))
+    {
+        let name = eat_name(tokens);
+        if tokens
+            .peek()
+            .is_none_or(|tk| !matches!(tk, Token::CloseCurly))
+        {
+            eat(tokens, Token::Comma);
+        }
+        variants.push(name);
+    }
+    eat(tokens, Token::CloseCurly);
+    Statement::Enum(name, variants)
+}
+
+fn parse_import(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
+    eat(tokens, Token::Import);
+    let module = eat_name(tokens);
+    if !tokens
+        .peek()
+        .is_some_and(|tk| matches!(tk, Token::OpenCurly))
+    {
+        return Statement::Import(module, vec![]);
+    }
+    eat(tokens, Token::OpenCurly);
+    let mut names_with_aliases = Vec::new();
+    while tokens.peek().is_some_and(|tk| matches!(tk, Token::Name(_))) {
+        let name = eat_name(tokens);
+        let alias = match tokens.peek() {
+            Some(Token::As) => {
+                tokens.next(); // Skip "as"
+                Some(eat_name(tokens))
+            }
+            _ => None,
+        };
+        if tokens
+            .peek()
+            .is_none_or(|tk| !matches!(tk, Token::CloseCurly))
+        {
+            eat(tokens, Token::Comma);
+        }
+        names_with_aliases.push((name, alias));
+    }
+    eat(tokens, Token::CloseCurly);
+    Statement::Import(module, names_with_aliases)
 }
 
 fn parse_expression(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
@@ -180,9 +268,15 @@ fn eat(tokens: &mut Peekable<IntoIter<Token>>, token: Token) {
 }
 
 #[derive(Debug)]
-pub struct Declaration {
-    pub name: String,
-    pub value: Expression,
+pub enum Statement {
+    Let(String, Expression),
+    // Note: use hash map for reproducibility
+    Struct(String, Vec<(String, String)> /* fields */),
+    Enum(String, Vec<String> /* variants */),
+    Import(
+        String,
+        Vec<(String, Option<String>)>, /* names with aliases */
+    ),
 }
 
 #[derive(Debug)]

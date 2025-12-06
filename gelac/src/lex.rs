@@ -12,6 +12,10 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
                 eat(chars, |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '_'));
             match lexeme.as_str() {
                 "let" => Some(Token::Let),
+                "struct" => Some(Token::Struct),
+                "enum" => Some(Token::Enum),
+                "import" => Some(Token::Import),
+                "as" => Some(Token::As),
                 "var" => Some(Token::Var),
                 "in" => Some(Token::In),
                 "if" => Some(Token::If),
@@ -76,6 +80,22 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             chars.next();
             Some(Token::CloseRound)
         }
+        ('{', _) => {
+            chars.next();
+            Some(Token::OpenCurly)
+        }
+        ('}', _) => {
+            chars.next();
+            Some(Token::CloseCurly)
+        }
+        (':', _) => {
+            chars.next();
+            Some(Token::Colon)
+        }
+        (',', _) => {
+            chars.next();
+            Some(Token::Comma)
+        }
         (' ' | '\t' | '\n' | '\r', _) => {
             eat(chars, |ch| matches!(ch, ' ' | '\t' | '\n' | '\r')); // Just skip whitespace
             token(chars) // And lex an actual token
@@ -107,6 +127,10 @@ pub enum Token {
     Integer(i128),
     String(String),
     Let,
+    Struct,
+    Enum,
+    Import,
+    As,
     Var,
     In,
     If,
@@ -121,4 +145,8 @@ pub enum Token {
     Arrow,
     OpenRound,
     CloseRound,
+    OpenCurly,
+    Colon,
+    Comma,
+    CloseCurly,
 }
