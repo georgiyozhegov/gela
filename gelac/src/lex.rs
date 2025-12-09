@@ -10,6 +10,7 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
         ('a'..='z' | 'A'..='Z' | '_', _) => {
             let mut lexeme =
                 eat(chars, |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '_'));
+            // Peek suffix: either "?" or "!"
             if chars.peek().is_some_and(|ch| matches!(ch, '?' | '!')) {
                 lexeme.push(chars.next().unwrap());
             }
@@ -24,11 +25,12 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
                 "if" => Some(Token::If),
                 "else" => Some(Token::Else),
                 "then" => Some(Token::Then),
+                "new" => Some(Token::New),
                 _ => Some(Token::Name(lexeme)), // If it's not a keyword, then it's a name
             }
         }
         ('0'..='9', _) => {
-            let lexeme = eat(chars, |ch| matches!(ch, '0'..='9'));
+            let lexeme = eat(chars, |ch| matches!(ch, '0'..='9' | '_'));
             let value: i128 = lexeme.parse().unwrap(); // Todo: error handling
             Some(Token::Integer(value))
         }
@@ -99,6 +101,10 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             chars.next();
             Some(Token::Comma)
         }
+        ('.', _) => {
+            chars.next();
+            Some(Token::Dot)
+        }
         (' ' | '\t' | '\n' | '\r', _) => {
             eat(chars, |ch| matches!(ch, ' ' | '\t' | '\n' | '\r')); // Just skip whitespace
             token(chars) // And lex an actual token
@@ -139,6 +145,7 @@ pub enum Token {
     If,
     Then,
     Else,
+    New,
     Plus,
     Minus,
     Asterisk,
@@ -151,5 +158,6 @@ pub enum Token {
     OpenCurly,
     Colon,
     Comma,
+    Dot,
     CloseCurly,
 }

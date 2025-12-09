@@ -107,7 +107,34 @@ fn parse_import(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
 }
 
 fn parse_expression(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    parse_binary(tokens, 0)
+    match tokens.peek() {
+        Some(Token::New) => parse_new(tokens),
+        _ => parse_binary(tokens, 0),
+    }
+}
+
+fn parse_new(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
+    eat(tokens, Token::New);
+    let ty = eat_name(tokens);
+    eat(tokens, Token::OpenCurly);
+    let mut fields = Vec::new();
+    while tokens
+        .peek()
+        .is_some_and(|tk| !matches!(tk, Token::CloseCurly))
+    {
+        let name = eat_name(tokens);
+        eat(tokens, Token::Colon);
+        let value = parse_expression(tokens);
+        if tokens
+            .peek()
+            .is_none_or(|tk| !matches!(tk, Token::CloseCurly))
+        {
+            eat(tokens, Token::Comma);
+        }
+        fields.push((name, value));
+    }
+    eat(tokens, Token::CloseCurly);
+    Expression::New(ty, fields)
 }
 
 fn parse_binary(
@@ -297,4 +324,5 @@ pub enum Expression {
         then: Box<Expression>,
         otherwise: Box<Expression>,
     },
+    New(String, Vec<(String, Expression)> /* fields */),
 }
