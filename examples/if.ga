@@ -1,1 +1,1 @@
-let gela_rocks? = if 1 == 1 then "True" else "False"
+let gela_rocks? = if 1 then "True" else "False"

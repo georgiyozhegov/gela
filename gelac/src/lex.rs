@@ -8,8 +8,11 @@ pub fn lex(source: String) -> Vec<Token> {
 fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
     match this_and_next(chars)? {
         ('a'..='z' | 'A'..='Z' | '_', _) => {
-            let lexeme =
+            let mut lexeme =
                 eat(chars, |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '_'));
+            if chars.peek().is_some_and(|ch| matches!(ch, '?' | '!')) {
+                lexeme.push(chars.next().unwrap());
+            }
             match lexeme.as_str() {
                 "let" => Some(Token::Let),
                 "struct" => Some(Token::Struct),
