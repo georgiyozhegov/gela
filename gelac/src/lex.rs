@@ -25,6 +25,7 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
                 "if" => Some(Token::If),
                 "else" => Some(Token::Else),
                 "then" => Some(Token::Then),
+                "when" => Some(Token::When),
                 "new" => Some(Token::New),
                 _ => Some(Token::Name(lexeme)), // If it's not a keyword, then it's a name
             }
@@ -105,6 +106,10 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             chars.next();
             Some(Token::Dot)
         }
+        ('|', _) => {
+            chars.next();
+            Some(Token::Pipe)
+        }
         (' ' | '\t' | '\n' | '\r', _) => {
             eat(chars, |ch| matches!(ch, ' ' | '\t' | '\n' | '\r')); // Just skip whitespace
             token(chars) // And lex an actual token
@@ -146,6 +151,7 @@ pub enum Token {
     Then,
     Else,
     New,
+    When,
     Plus,
     Minus,
     Asterisk,
@@ -156,8 +162,46 @@ pub enum Token {
     OpenRound,
     CloseRound,
     OpenCurly,
+    CloseCurly,
     Colon,
     Comma,
     Dot,
-    CloseCurly,
+    Pipe,
+}
+
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Name(name) => write!(f, "name `{name}`"),
+            Self::Integer(value) => write!(f, "integer `{value}`"),
+            Self::String(text) => write!(f, "string `{text}`"),
+            Self::Let => write!(f, "`let`"),
+            Self::Struct => write!(f, "`struct`"),
+            Self::Enum => write!(f, "`enum`"),
+            Self::Import => write!(f, "`import`"),
+            Self::As => write!(f, "`as`"),
+            Self::Var => write!(f, "`var`"),
+            Self::In => write!(f, "`in`"),
+            Self::If => write!(f, "`if`"),
+            Self::Then => write!(f, "`then`"),
+            Self::Else => write!(f, "`else`"),
+            Self::New => write!(f, "`new`"),
+            Self::When => write!(f, "`when`"),
+            Self::Plus => write!(f, "`+`"),
+            Self::Minus => write!(f, "`-`"),
+            Self::Asterisk => write!(f, "`*`"),
+            Self::Slash => write!(f, "`/`"),
+            Self::Equals => write!(f, "`=`"),
+            Self::Dollar => write!(f, "`$`"),
+            Self::Arrow => write!(f, "`->`"),
+            Self::OpenRound => write!(f, "`(`"),
+            Self::CloseRound => write!(f, "`)`"),
+            Self::OpenCurly => write!(f, "`{{`"),
+            Self::CloseCurly => write!(f, "`}}`"),
+            Self::Colon => write!(f, "`:`"),
+            Self::Comma => write!(f, "`,`"),
+            Self::Dot => write!(f, "`.`"),
+            Self::Pipe => write!(f, "`|`"),
+        }
+    }
 }
