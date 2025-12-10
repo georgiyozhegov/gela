@@ -69,8 +69,8 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             Some(Token::Dollar)
         }
         ('-', Some('>')) => {
-            chars.next();
-            chars.next();
+            chars.next(); // "-"
+            chars.next(); // ">"
             Some(Token::Arrow)
         }
         ('-', _) => {
@@ -135,7 +135,7 @@ fn eat(chars: &mut Peekable<Chars>, condition: fn(&char) -> bool) -> String {
     buffer
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
     Name(String),
     Integer(i128),

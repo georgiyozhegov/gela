@@ -1,110 +1,259 @@
-use std::{iter::Peekable, vec::IntoIter};
+use std::{iter::{Peekable}, vec::IntoIter};
 
 use crate::lex::Token;
 
-pub fn parse(tokens: Vec<Token>) -> Vec<Statement> {
-    let mut tokens = tokens.into_iter().peekable();
+pub fn parse(tokens: Vec<Token>) -> Vec<Result<Statement, ParserError>> {
+    let mut parser = Parser::new(tokens);
     std::iter::from_fn(move || {
-        (tokens.peek().is_some()).then(|| parse_statement(&mut tokens))
+        (parser.peek().is_some()).then(|| parser.parse_statement())
     })
     .collect()
 }
 
-fn parse_statement(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
-    match tokens.peek().unwrap() /* Checked in "parse" */ {
-        Token::Let => parse_let(tokens),
-        Token::Struct => parse_struct(tokens),
-        Token::Enum => parse_enum(tokens),
-        Token::Import => parse_import(tokens),
-        tk => panic!("Expected statement, got {tk:?}"),
-    }
+#[derive(Debug)]
+pub enum ParserError {
+    Unexpected { actual: Token, expected: Token, context: String },
+    UnexpectedWithMessage { actual: Token, message: String, context: String },
+    UnexpectedEof { expected: String, context: String }, // Location can be restored
+    EmptyStruct,
+    EmptyEnum,
 }
 
-fn parse_let(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
-    eat(tokens, Token::Let);
-    let name = eat_name(tokens);
-    eat(tokens, Token::Equals);
-    let value = parse_expression(tokens);
-    Statement::Let(name, value)
-}
-
-fn parse_struct(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
-    eat(tokens, Token::Struct);
-    let name = eat_name(tokens);
-    eat(tokens, Token::OpenCurly);
-    let mut fields = Vec::new();
-    while tokens
-        .peek()
-        .is_some_and(|tk| !matches!(tk, Token::CloseCurly))
-    {
-        let name = eat_name(tokens);
-        eat(tokens, Token::Colon);
-        let ty = eat_name(tokens);
-        if tokens
-            .peek()
-            .is_none_or(|tk| !matches!(tk, Token::CloseCurly))
-        {
-            eat(tokens, Token::Comma);
+impl ParserError {
+    pub fn unexpected(actual: Option<Token>, expected: Token, context: impl ToString) -> Self {
+        if let Some(actual) = actual {
+            Self::Unexpected { actual, expected, context: context.to_string() }
+        } else {
+            Self::UnexpectedEof { expected: expected.to_string(), context: context.to_string() }
         }
-        fields.push((name, ty));
     }
-    eat(tokens, Token::CloseCurly);
-    Statement::Struct(name, fields)
-}
 
-fn parse_enum(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
-    eat(tokens, Token::Enum);
-    let name = eat_name(tokens);
-    eat(tokens, Token::OpenCurly);
-    let mut variants = Vec::new();
-    while tokens
-        .peek()
-        .is_some_and(|tk| !matches!(tk, Token::CloseCurly))
-    {
-        let name = eat_name(tokens);
-        if tokens
-            .peek()
-            .is_none_or(|tk| !matches!(tk, Token::CloseCurly))
-        {
-            eat(tokens, Token::Comma);
+    pub fn unexpected_with_message(actual: Option<Token>, message: impl ToString, context: impl ToString) -> Self {
+        if let Some(actual) = actual {
+            Self::UnexpectedWithMessage { actual, message: message.to_string(), context: context.to_string() }
+        } else {
+            Self::UnexpectedEof { expected: message.to_string(), context: context.to_string() }
         }
-        variants.push(name);
     }
-    eat(tokens, Token::CloseCurly);
-    Statement::Enum(name, variants)
 }
 
-fn parse_import(tokens: &mut Peekable<IntoIter<Token>>) -> Statement {
-    eat(tokens, Token::Import);
-    let module = eat_name(tokens);
-    if !tokens
-        .peek()
-        .is_some_and(|tk| matches!(tk, Token::OpenCurly))
-    {
-        return Statement::Import(module, vec![]);
+struct Parser {
+    tokens: Vec<Token>,
+    cursor: usize,
+}
+
+impl Parser {
+    pub fn new(tokens: Vec<Token>) -> Self {
+        Self { tokens, cursor: 0 }
     }
-    eat(tokens, Token::OpenCurly);
-    let mut names_with_aliases = Vec::new();
-    while tokens.peek().is_some_and(|tk| matches!(tk, Token::Name(_))) {
-        let name = eat_name(tokens);
-        let alias = match tokens.peek() {
-            Some(Token::As) => {
-                tokens.next(); // Skip "as"
-                Some(eat_name(tokens))
+
+    #[must_use]
+    fn eat(&mut self, expected: Token, context: impl ToString) -> Result<(), ParserError> {
+        match self.next() {
+            Some(actual) if actual == expected => Ok(()),
+            other => Err(ParserError::unexpected(other, expected, context)),
+        }
+    }
+
+    #[must_use]
+    fn eat_name(&mut self, context: impl ToString) -> Result<Name, ParserError> {
+        match self.next() {
+            Some(Token::Name(name)) => Ok(Name(name)),
+            other => Err(ParserError::unexpected_with_message(other, "name", context)),
+        }
+    }
+
+    fn next(&mut self) -> Option<Token> {
+        let token = self.peek().cloned()?;
+        self.cursor += 1;
+        Some(token)
+    }
+
+    fn peek(&self) -> Option<&Token> {
+        self.nth(0)
+    }
+
+    fn nth(&self, offset: usize) -> Option<&Token> {
+        self.tokens.get(self.cursor + offset)
+    }
+
+    fn is_open_curly(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::OpenCurly))
+    }
+
+    fn is_close_curly(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::CloseCurly))
+    }
+
+    fn is_as(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::As))
+    }
+}
+
+#[derive(Debug)]
+pub enum Statement {
+    Let(Name, Expression),
+    Struct(Name, StructFields),
+    Enum(Name, EnumVariants),
+    Import(
+        Name,
+        Option<NamesWithAliases>,
+    ),
+}
+
+#[derive(Debug)]
+pub struct Name(String);
+
+#[derive(Debug)]
+pub struct StructFields(Vec<(Name, Name)>);
+
+impl StructFields {
+    pub fn check(&self) -> Result<(), ParserError> {
+        if self.0.is_empty() {
+            Err(ParserError::EmptyStruct)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct EnumVariants(Vec<Name>);
+
+impl EnumVariants {
+    pub fn check(&self) -> Result<(), ParserError> {
+        if self.0.is_empty() {
+            Err(ParserError::EmptyEnum)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct NamesWithAliases(Vec<(Name, Option<Name>)>);
+
+impl Parser {
+    pub fn parse_statement(&mut self) -> Result<Statement, ParserError> {
+        match self.peek() {
+            Some(Token::Let) => self.parse_let(),
+            Some(Token::Struct) => self.parse_struct(),
+            Some(Token::Enum) => self.parse_enum(),
+            Some(Token::Import) => self.parse_import(),
+            _ => Err(ParserError::unexpected_with_message(self.next(), "statement", "global scope")),
+        }
+    }
+
+    //> Let
+    pub fn parse_let(&mut self) -> Result<Statement, ParserError> {
+        let context = format!("let statement");
+        self.eat(Token::Let, &context)?;
+        let name = self.eat_name(&context)?;
+        self.eat(Token::Equals, &context)?;
+        let value = self.parse_expression()?;
+        Ok(Statement::Let(name, value))
+    }
+    //< Let
+
+    //> Struct
+    pub fn parse_struct(&mut self) -> Result<Statement, ParserError> {
+        let context = format!("struct definition");
+        self.eat(Token::Struct, &context)?;
+        let name = self.eat_name(&context)?;
+        self.eat(Token::OpenCurly, &context)?;
+        let fields = self.parse_struct_fields()?;
+        self.eat(Token::CloseCurly, &context)?;
+        Ok(Statement::Struct(name, fields))
+    }
+
+    pub fn parse_struct_fields(&mut self) -> Result<StructFields, ParserError> {
+        let context = format!("struct fields");
+        let mut fields = Vec::new();
+        while !self.is_close_curly() {
+            let name = self.eat_name(&context)?;
+            self.eat(Token::Colon, &context)?;
+            let ty = self.eat_name(&context)?;
+            if !self.is_close_curly() {
+                self.eat(Token::Comma, &context)?;
             }
-            _ => None,
-        };
-        if tokens
-            .peek()
-            .is_none_or(|tk| !matches!(tk, Token::CloseCurly))
-        {
-            eat(tokens, Token::Comma);
+            let field = (name, ty);
+            fields.push(field);
         }
-        names_with_aliases.push((name, alias));
+        let fields = StructFields(fields);
+        fields.check()?;
+        Ok(fields)
     }
-    eat(tokens, Token::CloseCurly);
-    Statement::Import(module, names_with_aliases)
+    //< Struct
+
+    //> Enum
+    pub fn parse_enum(&mut self) -> Result<Statement, ParserError> {
+        let context = format!("enum definition");
+        self.eat(Token::Enum, &context)?;
+        let name = self.eat_name(&context)?;
+        self.eat(Token::OpenCurly, &context)?;
+        let variants = self.parse_enum_variants()?;
+        self.eat(Token::CloseCurly, &context)?;
+        Ok(Statement::Enum(name, variants))
+    }
+
+    pub fn parse_enum_variants(&mut self) -> Result<EnumVariants, ParserError> {
+        let context = format!("enum variants");
+        let mut variants = Vec::new();
+        while !self.is_close_curly() {
+            let variant = self.eat_name(&context)?;
+            if !self.is_close_curly() {
+                self.eat(Token::Comma, &context)?;
+            }
+            variants.push(variant);
+        }
+        let variants = EnumVariants(variants);
+        variants.check()?;
+        Ok(variants)
+    }
+    //< Enum
+
+    //> Import
+    pub fn parse_import(&mut self) -> Result<Statement, ParserError> {
+        let context = format!("import statement");
+        self.eat(Token::Import, &context)?;
+        let module = self.eat_name(&context)?;
+        if !self.is_open_curly() {
+            return Ok(Statement::Import(module, None));
+        }
+        self.eat(Token::OpenCurly, &context)?;
+        let names_with_aliases = self.parse_names_with_aliases()?;
+        self.eat(Token::CloseCurly, &context)?;
+        Ok(Statement::Import(module, Some(names_with_aliases)))
+    }
+
+    pub fn parse_names_with_aliases(&mut self) -> Result<NamesWithAliases, ParserError> {
+        let context = format!("imported names with aliases");
+        let mut names_with_aliases = Vec::new();
+        while !self.is_close_curly() {
+            let name = self.eat_name(&context)?;
+            let alias: Option<Name> = if self.is_as() {
+                self.eat(Token::As, &context)?;
+                Some(self.eat_name(&context)?)
+            } else {
+                None
+            };
+            if !self.is_close_curly() {
+                self.eat(Token::Comma, &context)?;
+            }
+            let name_with_alias = (name, alias);
+            names_with_aliases.push(name_with_alias);
+        }
+        Ok(NamesWithAliases(names_with_aliases))
+    }
+    //< Import
 }
+
+impl Parser {
+    pub fn parse_expression(&mut self) -> Result<Expression, ParserError> {
+        todo!()
+    }
+}
+
 
 fn parse_expression(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
     match tokens.peek() {
@@ -213,7 +362,8 @@ fn parse_atom(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
         Some(Token::OpenRound) => parse_parenthesized(tokens),
         Some(Token::Var) => parse_var_in(tokens),
         Some(Token::If) => parse_if(tokens),
-        tk => panic!("Expected atom, got: {tk:?}"),
+        Some(tk) => panic!("Expected atom, got: {tk}"),
+        None => panic!("Unexpected EOF"),
     }
 }
 
@@ -292,18 +442,6 @@ fn eat(tokens: &mut Peekable<IntoIter<Token>>, token: Token) {
             panic!("Expected {token:?}, got {next:?}"); // Todo: error handling
         }
     }
-}
-
-#[derive(Debug)]
-pub enum Statement {
-    Let(String, Expression),
-    // Note: use hash map for reproducibility
-    Struct(String, Vec<(String, String)> /* fields */),
-    Enum(String, Vec<String> /* variants */),
-    Import(
-        String,
-        Vec<(String, Option<String>)>, /* names with aliases */
-    ),
 }
 
 #[derive(Debug)]
