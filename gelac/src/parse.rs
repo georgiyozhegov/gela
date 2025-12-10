@@ -101,8 +101,13 @@ pub enum Statement {
     ),
 }
 
-#[derive(Debug)]
 pub struct Name(String);
+
+impl std::fmt::Debug for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Name({:?})", self.0)
+    }
+}
 
 #[derive(Debug)]
 pub struct StructFields(Vec<(Name, Name)>);
