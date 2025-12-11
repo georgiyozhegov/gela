@@ -151,7 +151,7 @@ impl Parser {
 
     //> Let
     pub fn parse_let(&mut self) -> Result<Statement, ParserError> {
-        let context = format!("let statement");
+        let context = "let statement";
         self.eat(Token::Let, &context)?;
         let name = self.eat_name(&context)?;
         self.eat(Token::Equals, &context)?;
@@ -162,7 +162,7 @@ impl Parser {
 
     //> Struct
     pub fn parse_struct(&mut self) -> Result<Statement, ParserError> {
-        let context = format!("struct definition");
+        let context = "struct definition";
         self.eat(Token::Struct, &context)?;
         let name = self.eat_name(&context)?;
         self.eat(Token::OpenCurly, &context)?;
@@ -172,7 +172,7 @@ impl Parser {
     }
 
     pub fn parse_struct_fields(&mut self) -> Result<StructFields, ParserError> {
-        let context = format!("struct fields");
+        let context = "struct fields";
         let mut fields = Vec::new();
         while !self.is_close_curly() {
             let name = self.eat_name(&context)?;
@@ -192,7 +192,7 @@ impl Parser {
 
     //> Enum
     pub fn parse_enum(&mut self) -> Result<Statement, ParserError> {
-        let context = format!("enum definition");
+        let context = "enum definition";
         self.eat(Token::Enum, &context)?;
         let name = self.eat_name(&context)?;
         self.eat(Token::OpenCurly, &context)?;
@@ -202,7 +202,7 @@ impl Parser {
     }
 
     pub fn parse_enum_variants(&mut self) -> Result<EnumVariants, ParserError> {
-        let context = format!("enum variants");
+        let context = "enum variants";
         let mut variants = Vec::new();
         while !self.is_close_curly() {
             let variant = self.eat_name(&context)?;
@@ -219,7 +219,7 @@ impl Parser {
 
     //> Import
     pub fn parse_import(&mut self) -> Result<Statement, ParserError> {
-        let context = format!("import statement");
+        let context = "import statement";
         self.eat(Token::Import, &context)?;
         let module = self.eat_name(&context)?;
         if !self.is_open_curly() {
@@ -232,7 +232,7 @@ impl Parser {
     }
 
     pub fn parse_names_with_aliases(&mut self) -> Result<NamesWithAliases, ParserError> {
-        let context = format!("imported names with aliases");
+        let context = "imported names with aliases";
         let mut names_with_aliases = Vec::new();
         while !self.is_close_curly() {
             let name = self.eat_name(&context)?;
@@ -255,217 +255,167 @@ impl Parser {
 
 impl Parser {
     pub fn parse_expression(&mut self) -> Result<Expression, ParserError> {
-        todo!()
-    }
-}
-
-
-fn parse_expression(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    match tokens.peek() {
-        Some(Token::New) => parse_new(tokens),
-        _ => parse_binary(tokens, 0),
-    }
-}
-
-fn parse_new(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    eat(tokens, Token::New);
-    let ty = eat_name(tokens);
-    eat(tokens, Token::OpenCurly);
-    let mut fields = Vec::new();
-    while tokens
-        .peek()
-        .is_some_and(|tk| !matches!(tk, Token::CloseCurly))
-    {
-        let name = eat_name(tokens);
-        eat(tokens, Token::Colon);
-        let value = parse_expression(tokens);
-        if tokens
-            .peek()
-            .is_none_or(|tk| !matches!(tk, Token::CloseCurly))
-        {
-            eat(tokens, Token::Comma);
-        }
-        fields.push((name, value));
-    }
-    eat(tokens, Token::CloseCurly);
-    Expression::New(ty, fields)
-}
-
-fn parse_binary(
-    tokens: &mut Peekable<IntoIter<Token>>,
-    min_precedence: u8,
-) -> Expression {
-    let mut left = parse_application(tokens);
-    while let Some(token) = tokens.peek() {
-        let precedence = current_precedence(token);
-        // If precedence equals to 0, then the token isn't an operator
-        if precedence == 0 || precedence < min_precedence {
-            break;
-        }
-        // Peeked token is an operator, because its precedence > 0
-        let operator = tokens.next().unwrap(); // Checked: peeked token is some
-        let right =
-            parse_binary(tokens, next_precedence(&operator, precedence));
-        left = match operator {
-            Token::Arrow => {
-                // Lambda definition
-                let Expression::Name(parameter) = left else {
-                    panic!("Expected lambda parameter, got: {right:?}");
-                };
-                Expression::Lambda(parameter, Box::new(right))
-            }
-            // A normal binary expression
-            _ => Expression::Binary(operator, Box::new(left), Box::new(right)),
+        let context = "statement body";
+        match self.peek() {
+            Some(Token::Name(_)) if matches!(self.nth(1), Some(Token::Arrow)) => self.parse_abstraction(),
+            Some(_) => self.parse_infix_lowest(),
+            _ => Err(ParserError::unexpected_with_message(self.next(), "expression", &context)),
         }
     }
-    left
-}
 
-fn current_precedence(token: &Token) -> u8 {
-    match token {
-        Token::Asterisk | Token::Slash => 4,
-        Token::Plus | Token::Minus => 3,
-        Token::Arrow => 2,
-        Token::Dollar => 1,
-        _ => 0, // Not a binary operator
+    pub fn parse_abstraction(&mut self) -> Result<Expression, ParserError> {
+        let context = "abstraction";
+        let parameter = self.eat_name(&context)?;
+        self.eat(Token::Arrow, &context)?;
+        let body = self.parse_expression()?;
+        Ok(Expression::Abstraction(parameter, Box::new(body)))
     }
-}
 
-fn next_precedence(token: &Token, current: u8) -> u8 {
-    match token {
-        Token::Plus
-        | Token::Minus
-        | Token::Asterisk
-        | Token::Slash
-        | Token::Dollar => current + 1, // Right-associative
-        _ => current, // Left-associative
-    }
-}
-
-fn parse_application(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    let mut left = parse_atom(tokens);
-    while let Some(token) = tokens.peek() {
-        match token {
-            Token::Name(_)
-            | Token::Integer(_)
-            | Token::String(_)
-            | Token::OpenRound => {
-                let right = parse_atom(tokens);
-                left = Expression::Application(Box::new(left), Box::new(right));
-            }
-            _ => break,
+    pub fn parse_type_cast(&mut self) -> Result<Expression, ParserError> {
+        let context = "type cast";
+        let mut value = self.parse_infix_lowest()?;
+        if let Some(Token::ColonColon) = self.peek() {
+            self.next();
+            let ty = self.eat_name(&context)?;
+            value = Expression::TypeCast(Box::new(value), ty);
         }
+        Ok(value)
     }
-    left
-}
 
-fn parse_atom(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    match tokens.peek() {
-        Some(Token::Name(_)) => parse_name(tokens),
-        Some(Token::Integer(_)) => parse_integer(tokens),
-        Some(Token::String(_)) => parse_string(tokens),
-        Some(Token::OpenRound) => parse_parenthesized(tokens),
-        Some(Token::Var) => parse_var_in(tokens),
-        Some(Token::If) => parse_if(tokens),
-        Some(tk) => panic!("Expected atom, got: {tk}"),
-        None => panic!("Unexpected EOF"),
-    }
-}
-
-fn parse_if(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    if matches!(tokens.peek(), Some(Token::If)) {
-        tokens.next();
-        let condition = parse_expression(tokens);
-        eat(tokens, Token::Then);
-        let then = parse_expression(tokens);
-        eat(tokens, Token::Else);
-        let otherwise = parse_expression(tokens);
-        Expression::If {
-            condition: Box::new(condition),
-            then: Box::new(then),
-            otherwise: Box::new(otherwise),
+    //> InfixLowest
+    pub fn parse_infix_lowest(&mut self) -> Result<Expression, ParserError> {
+        let context = "infix lowest";
+        let mut lhs = self.parse_infix_lower()?;
+        if self.is_infix_lowest_operator() {
+            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let rhs = self.parse_infix_lowest()?;
+            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
-    } else {
-        parse_binary(tokens, 0)
+        Ok(lhs)
     }
-}
 
-fn parse_var_in(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    if matches!(tokens.peek(), Some(&Token::Var)) {
-        tokens.next();
-        let name = eat_name(tokens);
-        eat(tokens, Token::Equals);
-        let value = parse_expression(tokens);
-        eat(tokens, Token::In);
-        let body = parse_expression(tokens);
-        Expression::VarIn {
-            name,
-            value: Box::new(value),
-            body: Box::new(body),
+    fn is_infix_lowest_operator(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::Dollar))
+    }
+    //< InfixLowest
+
+    //> InfixLower
+    pub fn parse_infix_lower(&mut self) -> Result<Expression, ParserError> {
+        let context = "infix lower";
+        let mut lhs = self.parse_infix_low()?;
+        if self.is_infix_lowest_operator() {
+            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let rhs = self.parse_infix_lowest()?;
+            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
-    } else {
-        parse_binary(tokens, 0)
+        Ok(lhs)
     }
-}
 
-fn parse_parenthesized(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    eat(tokens, Token::OpenRound);
-    let inner = parse_expression(tokens);
-    eat(tokens, Token::CloseRound);
-    inner // There is no "parenthesized" node
-}
-
-fn parse_name(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    Expression::Name(eat_name(tokens))
-}
-
-fn eat_name(tokens: &mut Peekable<IntoIter<Token>>) -> String {
-    match tokens.next() {
-        Some(Token::Name(name)) => name,
-        next => panic!("Expected name, got {next:?}"), // Todo: error handling
+    fn is_infix_lower_operator(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::And | Token::Or))
     }
-}
+    //< InfixLower
 
-fn parse_integer(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    match tokens.next() {
-        Some(Token::Integer(value)) => Expression::Integer(value),
-        next => panic!("Expected name, got {next:?}"), // Todo: error handling
-    }
-}
-
-fn parse_string(tokens: &mut Peekable<IntoIter<Token>>) -> Expression {
-    match tokens.next() {
-        Some(Token::String(text)) => Expression::String(text),
-        next => panic!("Expected string, got {next:?}"), // Todo: error handling
-    }
-}
-
-fn eat(tokens: &mut Peekable<IntoIter<Token>>, token: Token) {
-    match tokens.next() {
-        Some(tk) if tk == token => {} // Ok
-        next => {
-            panic!("Expected {token:?}, got {next:?}"); // Todo: error handling
+    //> InfixLow
+    pub fn parse_infix_low(&mut self) -> Result<Expression, ParserError> {
+        let context = "infix low";
+        let mut lhs = self.parse_infix_high()?;
+        if self.is_infix_low_operator() {
+            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let rhs = self.parse_infix_low()?;
+            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
+        Ok(lhs)
+    }
+
+    fn is_infix_low_operator(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::EqualEqual | Token::NotEqual | Token::LessEqual | Token::GreaterEqual | Token::Less | Token::Greater))
+    }
+    //< InfixLow
+
+    //> InfixHigh
+    pub fn parse_infix_high(&mut self) -> Result<Expression, ParserError> {
+        let context = "infix high";
+        let mut lhs = self.parse_infix_higher()?;
+        if self.is_infix_higher_operator() {
+            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let rhs = self.parse_infix_high()?;
+            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
+        }
+        Ok(lhs)
+    }
+
+    fn is_infix_high_operator(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::Plus | Token::Minus))
+    }
+    //< InfixHigh
+
+    //> InfixHigher
+    pub fn parse_infix_higher(&mut self) -> Result<Expression, ParserError> {
+        let context = "infix higher";
+        let mut lhs = self.parse_infix_highest()?;
+        if self.is_infix_higher_operator() {
+            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let rhs = self.parse_infix_higher()?;
+            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
+        }
+        Ok(lhs)
+    }
+
+    fn is_infix_higher_operator(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::Asterisk | Token::Slash | Token::Percent))
+    }
+    //< InfixHigher
+
+    //> InfixHighest
+    pub fn parse_infix_highest(&mut self) -> Result<Expression, ParserError> {
+        let context = "infix highest";
+        let mut lhs = self.parse_application()?;
+        if self.is_infix_highest_operator() {
+            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let rhs = self.parse_infix_highest()?;
+            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
+        }
+        Ok(lhs)
+    }
+
+    fn is_infix_highest_operator(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::Caret))
+    }
+    //< InfixHighest
+
+    pub fn parse_application(&mut self) -> Result<Expression, ParserError> {
+        self.next();
+        Ok(Expression::Application(Atom::Variable(Name("dummy".into())), vec![]))
     }
 }
 
 #[derive(Debug)]
 pub enum Expression {
-    Name(String),
+    Atom(Atom),
+    Abstraction(Name, Box<Expression>),
+    Bind(Name, Box<Expression> /* value */, Box<Expression> /* body */),
+    When(WhenBranches),
+    If(Box<Expression>, Box<Expression> /* then */, Box<Expression> /* else */),
+    New(Name, NewFields),
+    TypeCast(Box<Expression>, Name),
+    Binary(BinaryOperator, Box<Expression> /* lhs */, Box<Expression> /* rhs */),
+    Application(Atom, Vec<Atom>),
+}
+
+#[derive(Debug)]
+pub struct BinaryOperator(Token);
+
+#[derive(Debug)]
+pub struct WhenBranches(Vec<(Expression, Expression)>, Box<Expression> /* default */);
+
+#[derive(Debug)]
+pub struct NewFields(Vec<(Name, Expression)>);
+
+#[derive(Debug)]
+pub enum Atom {
+    Variable(Name),
     Integer(i128),
     String(String),
-    Binary(Token /* operator */, Box<Expression>, Box<Expression>),
-    Lambda(String /* parameter */, Box<Expression>),
-    Application(Box<Expression>, Box<Expression>),
-    VarIn {
-        name: String,
-        value: Box<Expression>,
-        body: Box<Expression>,
-    },
-    If {
-        condition: Box<Expression>,
-        then: Box<Expression>,
-        otherwise: Box<Expression>,
-    },
-    New(String, Vec<(String, Expression)> /* fields */),
+    Parenthesized(Box<Expression>),
 }

@@ -27,6 +27,8 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
                 "then" => Some(Token::Then),
                 "when" => Some(Token::When),
                 "new" => Some(Token::New),
+                "and" => Some(Token::And),
+                "or" => Some(Token::Or),
                 _ => Some(Token::Name(lexeme)), // If it's not a keyword, then it's a name
             }
         }
@@ -94,7 +96,12 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             chars.next();
             Some(Token::CloseCurly)
         }
+        (':', Some(':')) => {
+            chars.next();
+            Some(Token::ColonColon)
+        }
         (':', _) => {
+            // Put this branch after the "::" one
             chars.next();
             Some(Token::Colon)
         }
@@ -109,6 +116,32 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
         ('|', _) => {
             chars.next();
             Some(Token::Pipe)
+        }
+        ('^', _) => {
+            chars.next();
+            Some(Token::Caret)
+        }
+        ('%', _) => {
+            chars.next();
+            Some(Token::Percent)
+        }
+        ('<', Some('=')) => {
+            chars.next(); // "<"
+            chars.next(); // "="
+            Some(Token::LessEqual)
+        }
+        ('<', _) => {
+            chars.next();
+            Some(Token::Less)
+        }
+        ('>', Some('=')) => {
+            chars.next(); // ">"
+            chars.next(); // "="
+            Some(Token::GreaterEqual)
+        }
+        ('>', _) => {
+            chars.next();
+            Some(Token::Greater)
         }
         (' ' | '\t' | '\n' | '\r', _) => {
             eat(chars, |ch| matches!(ch, ' ' | '\t' | '\n' | '\r')); // Just skip whitespace
@@ -164,9 +197,22 @@ pub enum Token {
     OpenCurly,
     CloseCurly,
     Colon,
+    ColonColon,
     Comma,
     Dot,
     Pipe,
+    Caret,
+    Percent,
+
+    EqualEqual,
+    NotEqual,
+    LessEqual,
+    GreaterEqual,
+    Less,
+    Greater,
+
+    And,
+    Or,
 }
 
 impl std::fmt::Display for Token {
@@ -199,9 +245,20 @@ impl std::fmt::Display for Token {
             Self::OpenCurly => write!(f, "`{{`"),
             Self::CloseCurly => write!(f, "`}}`"),
             Self::Colon => write!(f, "`:`"),
+            Self::ColonColon => write!(f, "`::`"),
             Self::Comma => write!(f, "`,`"),
             Self::Dot => write!(f, "`.`"),
             Self::Pipe => write!(f, "`|`"),
+            Self::Caret => write!(f, "`^`"),
+            Self::Percent => write!(f, "`%`"),
+            Self::EqualEqual => write!(f, "`==`"),
+            Self::NotEqual => write!(f, "`!=`"),
+            Self::LessEqual => write!(f, "`<=`"),
+            Self::GreaterEqual => write!(f, "`>=`"),
+            Self::Less => write!(f, "`<`"),
+            Self::Greater => write!(f, "`>`"),
+            Self::And => write!(f, "`and`"),
+            Self::Or => write!(f, "`or`"),
         }
     }
 }

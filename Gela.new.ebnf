@@ -34,10 +34,12 @@ Expression =
   When |
   If |
   New |
-  TypeCast ;
+  TypeCast |
+  InfixLowest ;
 
 Abstraction =
-  name , "->" , Expression ;
+  name |
+  ( name , "->" , Expression ) ;
 
 Bind =
   "var" , name , "=" , Expression , "in" , Expression ;
