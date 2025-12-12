@@ -1,4 +1,4 @@
-use std::{iter::Peekable, vec::IntoIter};
+use std::{iter::Peekable, string::ParseError, vec::IntoIter};
 
 use crate::lex::Token;
 
@@ -450,13 +450,55 @@ impl Parser {
     }
     //< InfixHighest
 
+    //> Application
     pub fn parse_application(&mut self) -> Result<Expression, ParserError> {
-        self.next();
-        Ok(Expression::Application(
-            Atom::Variable(Name("dummy".into())),
-            vec![],
-        ))
+        let f = self.parse_atom()?;
+        let mut arguments = Vec::new();
+        while self.is_atom() {
+            arguments.push(self.parse_atom()?);
+        }
+        Ok(Expression::Application(f, arguments))
     }
+
+    fn is_atom(&mut self) -> bool {
+        matches!(
+            self.peek(),
+            Some(
+                Token::Name(_)
+                    | Token::Integer(_)
+                    | Token::String(_)
+                    | Token::OpenRound
+            )
+        )
+    }
+    //< Application
+
+    //> Atom
+    pub fn parse_atom(&mut self) -> Result<Atom, ParserError> {
+        let context = "expression";
+        match self.next() {
+            Some(Token::Name(identifier)) => {
+                Ok(Atom::Variable(Name(identifier)))
+            }
+            Some(Token::Integer(value)) => Ok(Atom::Integer(value)),
+            Some(Token::String(text)) => Ok(Atom::String(text)),
+            Some(Token::OpenRound) => self.parse_parenthesized(),
+            actual => Err(ParserError::unexpected_with_message(
+                actual,
+                format!("name, integer, string or {}", Token::OpenRound),
+                &context,
+            )),
+        }
+    }
+
+    pub fn parse_parenthesized(&mut self) -> Result<Atom, ParserError> {
+        // "(" was consumed
+        let context = "parenthesized";
+        let inner = self.parse_expression()?;
+        self.eat(Token::CloseRound, &context)?;
+        Ok(Atom::Parenthesized(Box::new(inner)))
+    }
+    //< Atom
 }
 
 #[derive(Debug)]
