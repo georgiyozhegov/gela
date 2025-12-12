@@ -1,4 +1,4 @@
-use std::{iter::{Peekable}, vec::IntoIter};
+use std::{iter::Peekable, vec::IntoIter};
 
 use crate::lex::Token;
 
@@ -12,27 +12,60 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Result<Statement, ParserError>> {
 
 #[derive(Debug)]
 pub enum ParserError {
-    Unexpected { actual: Token, expected: Token, context: String },
-    UnexpectedWithMessage { actual: Token, message: String, context: String },
-    UnexpectedEof { expected: String, context: String }, // Location can be restored
+    Unexpected {
+        actual: Token,
+        expected: Token,
+        context: String,
+    },
+    UnexpectedWithMessage {
+        actual: Token,
+        message: String,
+        context: String,
+    },
+    UnexpectedEof {
+        expected: String,
+        context: String,
+    }, // Location can be restored
     EmptyStruct,
     EmptyEnum,
 }
 
 impl ParserError {
-    pub fn unexpected(actual: Option<Token>, expected: Token, context: impl ToString) -> Self {
+    pub fn unexpected(
+        actual: Option<Token>,
+        expected: Token,
+        context: impl ToString,
+    ) -> Self {
         if let Some(actual) = actual {
-            Self::Unexpected { actual, expected, context: context.to_string() }
+            Self::Unexpected {
+                actual,
+                expected,
+                context: context.to_string(),
+            }
         } else {
-            Self::UnexpectedEof { expected: expected.to_string(), context: context.to_string() }
+            Self::UnexpectedEof {
+                expected: expected.to_string(),
+                context: context.to_string(),
+            }
         }
     }
 
-    pub fn unexpected_with_message(actual: Option<Token>, message: impl ToString, context: impl ToString) -> Self {
+    pub fn unexpected_with_message(
+        actual: Option<Token>,
+        message: impl ToString,
+        context: impl ToString,
+    ) -> Self {
         if let Some(actual) = actual {
-            Self::UnexpectedWithMessage { actual, message: message.to_string(), context: context.to_string() }
+            Self::UnexpectedWithMessage {
+                actual,
+                message: message.to_string(),
+                context: context.to_string(),
+            }
         } else {
-            Self::UnexpectedEof { expected: message.to_string(), context: context.to_string() }
+            Self::UnexpectedEof {
+                expected: message.to_string(),
+                context: context.to_string(),
+            }
         }
     }
 }
@@ -48,7 +81,11 @@ impl Parser {
     }
 
     #[must_use]
-    fn eat(&mut self, expected: Token, context: impl ToString) -> Result<(), ParserError> {
+    fn eat(
+        &mut self,
+        expected: Token,
+        context: impl ToString,
+    ) -> Result<(), ParserError> {
         match self.next() {
             Some(actual) if actual == expected => Ok(()),
             other => Err(ParserError::unexpected(other, expected, context)),
@@ -56,10 +93,15 @@ impl Parser {
     }
 
     #[must_use]
-    fn eat_name(&mut self, context: impl ToString) -> Result<Name, ParserError> {
+    fn eat_name(
+        &mut self,
+        context: impl ToString,
+    ) -> Result<Name, ParserError> {
         match self.next() {
             Some(Token::Name(name)) => Ok(Name(name)),
-            other => Err(ParserError::unexpected_with_message(other, "name", context)),
+            other => Err(ParserError::unexpected_with_message(
+                other, "name", context,
+            )),
         }
     }
 
@@ -95,10 +137,7 @@ pub enum Statement {
     Let(Name, Expression),
     Struct(Name, StructFields),
     Enum(Name, EnumVariants),
-    Import(
-        Name,
-        Option<NamesWithAliases>,
-    ),
+    Import(Name, Option<NamesWithAliases>),
 }
 
 pub struct Name(String);
@@ -145,7 +184,11 @@ impl Parser {
             Some(Token::Struct) => self.parse_struct(),
             Some(Token::Enum) => self.parse_enum(),
             Some(Token::Import) => self.parse_import(),
-            _ => Err(ParserError::unexpected_with_message(self.next(), "statement", "global scope")),
+            _ => Err(ParserError::unexpected_with_message(
+                self.next(),
+                "statement",
+                "global scope",
+            )),
         }
     }
 
@@ -231,7 +274,9 @@ impl Parser {
         Ok(Statement::Import(module, Some(names_with_aliases)))
     }
 
-    pub fn parse_names_with_aliases(&mut self) -> Result<NamesWithAliases, ParserError> {
+    pub fn parse_names_with_aliases(
+        &mut self,
+    ) -> Result<NamesWithAliases, ParserError> {
         let context = "imported names with aliases";
         let mut names_with_aliases = Vec::new();
         while !self.is_close_curly() {
@@ -257,9 +302,17 @@ impl Parser {
     pub fn parse_expression(&mut self) -> Result<Expression, ParserError> {
         let context = "statement body";
         match self.peek() {
-            Some(Token::Name(_)) if matches!(self.nth(1), Some(Token::Arrow)) => self.parse_abstraction(),
+            Some(Token::Name(_))
+                if matches!(self.nth(1), Some(Token::Arrow)) =>
+            {
+                self.parse_abstraction()
+            }
             Some(_) => self.parse_infix_lowest(),
-            _ => Err(ParserError::unexpected_with_message(self.next(), "expression", &context)),
+            _ => Err(ParserError::unexpected_with_message(
+                self.next(),
+                "expression",
+                &context,
+            )),
         }
     }
 
@@ -329,7 +382,17 @@ impl Parser {
     }
 
     fn is_infix_low_operator(&mut self) -> bool {
-        matches!(self.peek(), Some(Token::EqualEqual | Token::NotEqual | Token::LessEqual | Token::GreaterEqual | Token::Less | Token::Greater))
+        matches!(
+            self.peek(),
+            Some(
+                Token::EqualEqual
+                    | Token::NotEqual
+                    | Token::LessEqual
+                    | Token::GreaterEqual
+                    | Token::Less
+                    | Token::Greater
+            )
+        )
     }
     //< InfixLow
 
@@ -363,7 +426,10 @@ impl Parser {
     }
 
     fn is_infix_higher_operator(&mut self) -> bool {
-        matches!(self.peek(), Some(Token::Asterisk | Token::Slash | Token::Percent))
+        matches!(
+            self.peek(),
+            Some(Token::Asterisk | Token::Slash | Token::Percent)
+        )
     }
     //< InfixHigher
 
@@ -386,7 +452,10 @@ impl Parser {
 
     pub fn parse_application(&mut self) -> Result<Expression, ParserError> {
         self.next();
-        Ok(Expression::Application(Atom::Variable(Name("dummy".into())), vec![]))
+        Ok(Expression::Application(
+            Atom::Variable(Name("dummy".into())),
+            vec![],
+        ))
     }
 }
 
@@ -394,12 +463,24 @@ impl Parser {
 pub enum Expression {
     Atom(Atom),
     Abstraction(Name, Box<Expression>),
-    Bind(Name, Box<Expression> /* value */, Box<Expression> /* body */),
+    Bind(
+        Name,
+        Box<Expression>, /* value */
+        Box<Expression>, /* body */
+    ),
     When(WhenBranches),
-    If(Box<Expression>, Box<Expression> /* then */, Box<Expression> /* else */),
+    If(
+        Box<Expression>,
+        Box<Expression>, /* then */
+        Box<Expression>, /* else */
+    ),
     New(Name, NewFields),
     TypeCast(Box<Expression>, Name),
-    Binary(BinaryOperator, Box<Expression> /* lhs */, Box<Expression> /* rhs */),
+    Binary(
+        BinaryOperator,
+        Box<Expression>, /* lhs */
+        Box<Expression>, /* rhs */
+    ),
     Application(Atom, Vec<Atom>),
 }
 
@@ -407,7 +488,10 @@ pub enum Expression {
 pub struct BinaryOperator(Token);
 
 #[derive(Debug)]
-pub struct WhenBranches(Vec<(Expression, Expression)>, Box<Expression> /* default */);
+pub struct WhenBranches(
+    Vec<(Expression, Expression)>,
+    Box<Expression>, /* default */
+);
 
 #[derive(Debug)]
 pub struct NewFields(Vec<(Name, Expression)>);
