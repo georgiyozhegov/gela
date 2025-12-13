@@ -234,7 +234,11 @@ impl Parser {
         self.eat(Token::OpenCurly, &context)?;
         let names_with_aliases = self.parse_names_with_aliases()?;
         self.eat(Token::CloseCurly, &context)?;
-        Ok(ast::Statement::Import(module, module_alias, Some(names_with_aliases)))
+        Ok(ast::Statement::Import(
+            module,
+            module_alias,
+            Some(names_with_aliases),
+        ))
     }
 
     pub fn parse_names_with_aliases(
@@ -294,9 +298,7 @@ impl Parser {
     }
 
     //> Bind
-    pub fn parse_bind(
-        &mut self,
-    ) -> Result<ast::Expression, ParserError> {
+    pub fn parse_bind(&mut self) -> Result<ast::Expression, ParserError> {
         let context = "var-in expression";
         self.eat(Token::Var, &context)?;
         let name = self.eat_name(&context)?;

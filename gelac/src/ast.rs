@@ -7,7 +7,11 @@ pub enum Statement {
     Let(Name, Expression),
     Struct(Name, StructFields),
     Enum(Name, EnumVariants),
-    Import(Name, Option<Name> /* alias */, Option<NamesWithAliases>),
+    Import(
+        Name,
+        Option<Name>, /* alias */
+        Option<NamesWithAliases>,
+    ),
 }
 
 pub struct Name(pub String);
@@ -53,10 +57,7 @@ pub struct NamesWithAliases(pub Vec<(Name, Option<Name>)>);
 pub enum Expression {
     Atom(Atom),
     Abstraction(Name, Box<Expression>),
-    Bind(
-        BindVariable,
-        Box<Expression>, /* body */
-    ),
+    Bind(BindVariable, Box<Expression> /* body */),
     When(WhenBranches),
     If(
         Box<Expression>,
