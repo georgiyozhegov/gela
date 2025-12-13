@@ -315,7 +315,7 @@ impl Parser {
         Ok(lhs)
     }
 
-    fn is_infix_lowest_operator(&mut self) -> bool {
+    fn is_infix_lowest_operator(&self) -> bool {
         matches!(self.peek(), Some(Token::Dollar))
     }
     //< InfixLowest
@@ -326,7 +326,7 @@ impl Parser {
     ) -> Result<ast::Expression, ParserError> {
         let context = "infix lower";
         let mut lhs = self.parse_infix_low()?;
-        if self.is_infix_lowest_operator() {
+        if self.is_infix_lower_operator() {
             let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
             let rhs = self.parse_infix_lowest()?;
             lhs =
@@ -335,7 +335,7 @@ impl Parser {
         Ok(lhs)
     }
 
-    fn is_infix_lower_operator(&mut self) -> bool {
+    fn is_infix_lower_operator(&self) -> bool {
         matches!(self.peek(), Some(Token::And | Token::Or))
     }
     //< InfixLower
@@ -353,7 +353,7 @@ impl Parser {
         Ok(lhs)
     }
 
-    fn is_infix_low_operator(&mut self) -> bool {
+    fn is_infix_low_operator(&self) -> bool {
         matches!(
             self.peek(),
             Some(
@@ -372,7 +372,7 @@ impl Parser {
     pub fn parse_infix_high(&mut self) -> Result<ast::Expression, ParserError> {
         let context = "infix high";
         let mut lhs = self.parse_infix_higher()?;
-        if self.is_infix_higher_operator() {
+        if self.is_infix_high_operator() {
             let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
             let rhs = self.parse_infix_high()?;
             lhs =
@@ -381,7 +381,7 @@ impl Parser {
         Ok(lhs)
     }
 
-    fn is_infix_high_operator(&mut self) -> bool {
+    fn is_infix_high_operator(&self) -> bool {
         matches!(self.peek(), Some(Token::Plus | Token::Minus))
     }
     //< InfixHigh
@@ -401,7 +401,7 @@ impl Parser {
         Ok(lhs)
     }
 
-    fn is_infix_higher_operator(&mut self) -> bool {
+    fn is_infix_higher_operator(&self) -> bool {
         matches!(
             self.peek(),
             Some(Token::Asterisk | Token::Slash | Token::Percent)
@@ -424,7 +424,7 @@ impl Parser {
         Ok(lhs)
     }
 
-    fn is_infix_highest_operator(&mut self) -> bool {
+    fn is_infix_highest_operator(&self) -> bool {
         matches!(self.peek(), Some(Token::Caret))
     }
     //< InfixHighest
@@ -444,7 +444,7 @@ impl Parser {
         Ok(ast::Expression::Application(f, arguments))
     }
 
-    fn is_atom(&mut self) -> bool {
+    fn is_atom(&self) -> bool {
         matches!(
             self.peek(),
             Some(
