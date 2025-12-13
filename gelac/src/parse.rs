@@ -1,8 +1,7 @@
-use std::{iter::Peekable, string::ParseError, vec::IntoIter};
-
+use crate::ast;
 use crate::lex::Token;
 
-pub fn parse(tokens: Vec<Token>) -> Vec<Result<Statement, ParserError>> {
+pub fn parse(tokens: Vec<Token>) -> Vec<Result<ast::Statement, ParserError>> {
     let mut parser = Parser::new(tokens);
     std::iter::from_fn(move || {
         (parser.peek().is_some()).then(|| parser.parse_statement())
@@ -80,7 +79,6 @@ impl Parser {
         Self { tokens, cursor: 0 }
     }
 
-    #[must_use]
     fn eat(
         &mut self,
         expected: Token,
@@ -92,13 +90,12 @@ impl Parser {
         }
     }
 
-    #[must_use]
     fn eat_name(
         &mut self,
         context: impl ToString,
-    ) -> Result<Name, ParserError> {
+    ) -> Result<ast::Name, ParserError> {
         match self.next() {
-            Some(Token::Name(name)) => Ok(Name(name)),
+            Some(Token::Name(name)) => Ok(ast::Name(name)),
             other => Err(ParserError::unexpected_with_message(
                 other, "name", context,
             )),
@@ -132,53 +129,9 @@ impl Parser {
     }
 }
 
-#[derive(Debug)]
-pub enum Statement {
-    Let(Name, Expression),
-    Struct(Name, StructFields),
-    Enum(Name, EnumVariants),
-    Import(Name, Option<NamesWithAliases>),
-}
-
-pub struct Name(String);
-
-impl std::fmt::Debug for Name {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Name({:?})", self.0)
-    }
-}
-
-#[derive(Debug)]
-pub struct StructFields(Vec<(Name, Name)>);
-
-impl StructFields {
-    pub fn check(&self) -> Result<(), ParserError> {
-        if self.0.is_empty() {
-            Err(ParserError::EmptyStruct)
-        } else {
-            Ok(())
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct EnumVariants(Vec<Name>);
-
-impl EnumVariants {
-    pub fn check(&self) -> Result<(), ParserError> {
-        if self.0.is_empty() {
-            Err(ParserError::EmptyEnum)
-        } else {
-            Ok(())
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct NamesWithAliases(Vec<(Name, Option<Name>)>);
-
+//> Statement
 impl Parser {
-    pub fn parse_statement(&mut self) -> Result<Statement, ParserError> {
+    pub fn parse_statement(&mut self) -> Result<ast::Statement, ParserError> {
         match self.peek() {
             Some(Token::Let) => self.parse_let(),
             Some(Token::Struct) => self.parse_struct(),
@@ -193,28 +146,30 @@ impl Parser {
     }
 
     //> Let
-    pub fn parse_let(&mut self) -> Result<Statement, ParserError> {
+    pub fn parse_let(&mut self) -> Result<ast::Statement, ParserError> {
         let context = "let statement";
         self.eat(Token::Let, &context)?;
         let name = self.eat_name(&context)?;
         self.eat(Token::Equals, &context)?;
         let value = self.parse_expression()?;
-        Ok(Statement::Let(name, value))
+        Ok(ast::Statement::Let(name, value))
     }
     //< Let
 
     //> Struct
-    pub fn parse_struct(&mut self) -> Result<Statement, ParserError> {
+    pub fn parse_struct(&mut self) -> Result<ast::Statement, ParserError> {
         let context = "struct definition";
         self.eat(Token::Struct, &context)?;
         let name = self.eat_name(&context)?;
         self.eat(Token::OpenCurly, &context)?;
         let fields = self.parse_struct_fields()?;
         self.eat(Token::CloseCurly, &context)?;
-        Ok(Statement::Struct(name, fields))
+        Ok(ast::Statement::Struct(name, fields))
     }
 
-    pub fn parse_struct_fields(&mut self) -> Result<StructFields, ParserError> {
+    pub fn parse_struct_fields(
+        &mut self,
+    ) -> Result<ast::StructFields, ParserError> {
         let context = "struct fields";
         let mut fields = Vec::new();
         while !self.is_close_curly() {
@@ -227,24 +182,26 @@ impl Parser {
             let field = (name, ty);
             fields.push(field);
         }
-        let fields = StructFields(fields);
+        let fields = ast::StructFields(fields);
         fields.check()?;
         Ok(fields)
     }
     //< Struct
 
     //> Enum
-    pub fn parse_enum(&mut self) -> Result<Statement, ParserError> {
+    pub fn parse_enum(&mut self) -> Result<ast::Statement, ParserError> {
         let context = "enum definition";
         self.eat(Token::Enum, &context)?;
         let name = self.eat_name(&context)?;
         self.eat(Token::OpenCurly, &context)?;
         let variants = self.parse_enum_variants()?;
         self.eat(Token::CloseCurly, &context)?;
-        Ok(Statement::Enum(name, variants))
+        Ok(ast::Statement::Enum(name, variants))
     }
 
-    pub fn parse_enum_variants(&mut self) -> Result<EnumVariants, ParserError> {
+    pub fn parse_enum_variants(
+        &mut self,
+    ) -> Result<ast::EnumVariants, ParserError> {
         let context = "enum variants";
         let mut variants = Vec::new();
         while !self.is_close_curly() {
@@ -254,34 +211,34 @@ impl Parser {
             }
             variants.push(variant);
         }
-        let variants = EnumVariants(variants);
+        let variants = ast::EnumVariants(variants);
         variants.check()?;
         Ok(variants)
     }
     //< Enum
 
     //> Import
-    pub fn parse_import(&mut self) -> Result<Statement, ParserError> {
+    pub fn parse_import(&mut self) -> Result<ast::Statement, ParserError> {
         let context = "import statement";
         self.eat(Token::Import, &context)?;
         let module = self.eat_name(&context)?;
         if !self.is_open_curly() {
-            return Ok(Statement::Import(module, None));
+            return Ok(ast::Statement::Import(module, None));
         }
         self.eat(Token::OpenCurly, &context)?;
         let names_with_aliases = self.parse_names_with_aliases()?;
         self.eat(Token::CloseCurly, &context)?;
-        Ok(Statement::Import(module, Some(names_with_aliases)))
+        Ok(ast::Statement::Import(module, Some(names_with_aliases)))
     }
 
     pub fn parse_names_with_aliases(
         &mut self,
-    ) -> Result<NamesWithAliases, ParserError> {
+    ) -> Result<ast::NamesWithAliases, ParserError> {
         let context = "imported names with aliases";
         let mut names_with_aliases = Vec::new();
         while !self.is_close_curly() {
             let name = self.eat_name(&context)?;
-            let alias: Option<Name> = if self.is_as() {
+            let alias: Option<ast::Name> = if self.is_as() {
                 self.eat(Token::As, &context)?;
                 Some(self.eat_name(&context)?)
             } else {
@@ -293,13 +250,15 @@ impl Parser {
             let name_with_alias = (name, alias);
             names_with_aliases.push(name_with_alias);
         }
-        Ok(NamesWithAliases(names_with_aliases))
+        Ok(ast::NamesWithAliases(names_with_aliases))
     }
     //< Import
 }
+//< Statement
 
+//> Expression
 impl Parser {
-    pub fn parse_expression(&mut self) -> Result<Expression, ParserError> {
+    pub fn parse_expression(&mut self) -> Result<ast::Expression, ParserError> {
         let context = "statement body";
         match self.peek() {
             Some(Token::Name(_))
@@ -316,33 +275,42 @@ impl Parser {
         }
     }
 
-    pub fn parse_abstraction(&mut self) -> Result<Expression, ParserError> {
+    //> Abstraction
+    pub fn parse_abstraction(
+        &mut self,
+    ) -> Result<ast::Expression, ParserError> {
         let context = "abstraction";
         let parameter = self.eat_name(&context)?;
         self.eat(Token::Arrow, &context)?;
         let body = self.parse_expression()?;
-        Ok(Expression::Abstraction(parameter, Box::new(body)))
+        Ok(ast::Expression::Abstraction(parameter, Box::new(body)))
     }
+    //< Abstraction
 
-    pub fn parse_type_cast(&mut self) -> Result<Expression, ParserError> {
+    //> TypeCast
+    pub fn parse_type_cast(&mut self) -> Result<ast::Expression, ParserError> {
         let context = "type cast";
         let mut value = self.parse_infix_lowest()?;
         if let Some(Token::ColonColon) = self.peek() {
             self.next();
             let ty = self.eat_name(&context)?;
-            value = Expression::TypeCast(Box::new(value), ty);
+            value = ast::Expression::TypeCast(Box::new(value), ty);
         }
         Ok(value)
     }
+    //< TypeCast
 
     //> InfixLowest
-    pub fn parse_infix_lowest(&mut self) -> Result<Expression, ParserError> {
+    pub fn parse_infix_lowest(
+        &mut self,
+    ) -> Result<ast::Expression, ParserError> {
         let context = "infix lowest";
         let mut lhs = self.parse_infix_lower()?;
         if self.is_infix_lowest_operator() {
-            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
             let rhs = self.parse_infix_lowest()?;
-            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
+            lhs =
+                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
         Ok(lhs)
     }
@@ -353,13 +321,16 @@ impl Parser {
     //< InfixLowest
 
     //> InfixLower
-    pub fn parse_infix_lower(&mut self) -> Result<Expression, ParserError> {
+    pub fn parse_infix_lower(
+        &mut self,
+    ) -> Result<ast::Expression, ParserError> {
         let context = "infix lower";
         let mut lhs = self.parse_infix_low()?;
         if self.is_infix_lowest_operator() {
-            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
             let rhs = self.parse_infix_lowest()?;
-            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
+            lhs =
+                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
         Ok(lhs)
     }
@@ -370,13 +341,14 @@ impl Parser {
     //< InfixLower
 
     //> InfixLow
-    pub fn parse_infix_low(&mut self) -> Result<Expression, ParserError> {
+    pub fn parse_infix_low(&mut self) -> Result<ast::Expression, ParserError> {
         let context = "infix low";
         let mut lhs = self.parse_infix_high()?;
         if self.is_infix_low_operator() {
-            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
             let rhs = self.parse_infix_low()?;
-            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
+            lhs =
+                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
         Ok(lhs)
     }
@@ -397,13 +369,14 @@ impl Parser {
     //< InfixLow
 
     //> InfixHigh
-    pub fn parse_infix_high(&mut self) -> Result<Expression, ParserError> {
+    pub fn parse_infix_high(&mut self) -> Result<ast::Expression, ParserError> {
         let context = "infix high";
         let mut lhs = self.parse_infix_higher()?;
         if self.is_infix_higher_operator() {
-            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
             let rhs = self.parse_infix_high()?;
-            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
+            lhs =
+                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
         Ok(lhs)
     }
@@ -414,13 +387,16 @@ impl Parser {
     //< InfixHigh
 
     //> InfixHigher
-    pub fn parse_infix_higher(&mut self) -> Result<Expression, ParserError> {
+    pub fn parse_infix_higher(
+        &mut self,
+    ) -> Result<ast::Expression, ParserError> {
         let context = "infix higher";
         let mut lhs = self.parse_infix_highest()?;
         if self.is_infix_higher_operator() {
-            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
             let rhs = self.parse_infix_higher()?;
-            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
+            lhs =
+                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
         Ok(lhs)
     }
@@ -434,13 +410,16 @@ impl Parser {
     //< InfixHigher
 
     //> InfixHighest
-    pub fn parse_infix_highest(&mut self) -> Result<Expression, ParserError> {
+    pub fn parse_infix_highest(
+        &mut self,
+    ) -> Result<ast::Expression, ParserError> {
         let context = "infix highest";
         let mut lhs = self.parse_application()?;
         if self.is_infix_highest_operator() {
-            let operator = BinaryOperator(self.next().unwrap()); // Checked
+            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
             let rhs = self.parse_infix_highest()?;
-            lhs = Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
+            lhs =
+                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
         Ok(lhs)
     }
@@ -451,13 +430,15 @@ impl Parser {
     //< InfixHighest
 
     //> Application
-    pub fn parse_application(&mut self) -> Result<Expression, ParserError> {
+    pub fn parse_application(
+        &mut self,
+    ) -> Result<ast::Expression, ParserError> {
         let f = self.parse_atom()?;
         let mut arguments = Vec::new();
         while self.is_atom() {
             arguments.push(self.parse_atom()?);
         }
-        Ok(Expression::Application(f, arguments))
+        Ok(ast::Expression::Application(f, arguments))
     }
 
     fn is_atom(&mut self) -> bool {
@@ -474,14 +455,14 @@ impl Parser {
     //< Application
 
     //> Atom
-    pub fn parse_atom(&mut self) -> Result<Atom, ParserError> {
+    pub fn parse_atom(&mut self) -> Result<ast::Atom, ParserError> {
         let context = "expression";
         match self.next() {
             Some(Token::Name(identifier)) => {
-                Ok(Atom::Variable(Name(identifier)))
+                Ok(ast::Atom::Variable(ast::Name(identifier)))
             }
-            Some(Token::Integer(value)) => Ok(Atom::Integer(value)),
-            Some(Token::String(text)) => Ok(Atom::String(text)),
+            Some(Token::Integer(value)) => Ok(ast::Atom::Integer(value)),
+            Some(Token::String(text)) => Ok(ast::Atom::String(text)),
             Some(Token::OpenRound) => self.parse_parenthesized(),
             actual => Err(ParserError::unexpected_with_message(
                 actual,
@@ -491,57 +472,13 @@ impl Parser {
         }
     }
 
-    pub fn parse_parenthesized(&mut self) -> Result<Atom, ParserError> {
+    pub fn parse_parenthesized(&mut self) -> Result<ast::Atom, ParserError> {
         // "(" was consumed
         let context = "parenthesized";
         let inner = self.parse_expression()?;
         self.eat(Token::CloseRound, &context)?;
-        Ok(Atom::Parenthesized(Box::new(inner)))
+        Ok(ast::Atom::Parenthesized(Box::new(inner)))
     }
     //< Atom
 }
-
-#[derive(Debug)]
-pub enum Expression {
-    Atom(Atom),
-    Abstraction(Name, Box<Expression>),
-    Bind(
-        Name,
-        Box<Expression>, /* value */
-        Box<Expression>, /* body */
-    ),
-    When(WhenBranches),
-    If(
-        Box<Expression>,
-        Box<Expression>, /* then */
-        Box<Expression>, /* else */
-    ),
-    New(Name, NewFields),
-    TypeCast(Box<Expression>, Name),
-    Binary(
-        BinaryOperator,
-        Box<Expression>, /* lhs */
-        Box<Expression>, /* rhs */
-    ),
-    Application(Atom, Vec<Atom>),
-}
-
-#[derive(Debug)]
-pub struct BinaryOperator(Token);
-
-#[derive(Debug)]
-pub struct WhenBranches(
-    Vec<(Expression, Expression)>,
-    Box<Expression>, /* default */
-);
-
-#[derive(Debug)]
-pub struct NewFields(Vec<(Name, Expression)>);
-
-#[derive(Debug)]
-pub enum Atom {
-    Variable(Name),
-    Integer(i128),
-    String(String),
-    Parenthesized(Box<Expression>),
-}
+//< Expression
