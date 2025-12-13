@@ -1,0 +1,4 @@
+let shadowing =
+    var x = 1 in
+    var x = 2 in # I guess it's okay to allow name shadowing
+    x # 2

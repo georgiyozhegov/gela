@@ -1,1 +1,13 @@
 let gela_rocks? = if 1 then "True" else "False"
+
+let nested = x -> y ->
+    if x
+    then
+        if y
+        then 1
+        else 2
+    else 3
+
+let both = nested 1 1 # 1
+let only_x = nested 1 0 # 2
+let only_y = nested 0 1 # 3

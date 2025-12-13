@@ -8,19 +8,4 @@ enum Day {
     Sunday,
 }
 
-let to_nat = day ->
-    when
-    | day == Day.Monday then 1
-    | day == Day.Tuesday then 2
-    | day == Day.Wednesday then 3
-    | day == Day.Thursday then 4
-    | day == Day.Friday then 5
-    | day == Day.Saturday then 6
-    | day == Day.Sunday then 7
-    else unreachable ()
-
-let weekend? = day ->
-    day == Day.Saturday or day == Day.Sunday :: Bool
-
 let today = Day.Saturday
-let having_party? = weekend? today

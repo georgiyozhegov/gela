@@ -1,1 +1,3 @@
 import yolib { foo, bar, buzz as boo }
+
+import somelib as sl

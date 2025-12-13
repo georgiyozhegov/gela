@@ -1,3 +1,6 @@
-let add = x -> y -> x + y
-let add_three = add 3
-let five = add_three 2
+let times = x -> y -> x * y
+let double = times 2
+let triple = times 3
+
+let a = double 1 # 2
+let b = triple 2 # 6
