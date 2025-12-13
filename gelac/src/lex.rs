@@ -9,7 +9,7 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
     match this_and_next(chars)? {
         ('a'..='z' | 'A'..='Z' | '_', _) => {
             let mut lexeme =
-                eat(chars, |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '_'));
+                eat(chars, |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_'));
             // Peek suffix: either "?" or "!"
             if chars.peek().is_some_and(|ch| matches!(ch, '?' | '!')) {
                 lexeme.push(chars.next().unwrap());
