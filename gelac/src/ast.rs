@@ -7,7 +7,7 @@ pub enum Statement {
     Let(Name, Expression),
     Struct(Name, StructFields),
     Enum(Name, EnumVariants),
-    Import(Name, Option<NamesWithAliases>),
+    Import(Name, Option<Name> /* alias */, Option<NamesWithAliases>),
 }
 
 pub struct Name(pub String);

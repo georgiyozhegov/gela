@@ -20,7 +20,9 @@ Enum =
   "enum" , name , "{" , [ name , { "," , name } , [ "," ]  ] , "}" ;
 
 Import =
-  "import" , Path , "{" , [ ImportItem , { "," , ImportItem } , [ "," ]  ] , "}" ;
+  "import" , Path , ImportAlias , "{" , [ ImportItem , { "," , ImportItem } , [ "," ]  ] , "}" ;
+
+ImportAlias = [ "as" , name ] ;
 
 ImportItem = name , [ "as" , name ] ;
 

@@ -222,13 +222,19 @@ impl Parser {
         let context = "import statement";
         self.eat(Token::Import, &context)?;
         let module = self.eat_name(&context)?;
+        let module_alias = if self.is_as() {
+            self.next();
+            Some(self.eat_name(&context)?)
+        } else {
+            None
+        };
         if !self.is_open_curly() {
-            return Ok(ast::Statement::Import(module, None));
+            return Ok(ast::Statement::Import(module, module_alias, None));
         }
         self.eat(Token::OpenCurly, &context)?;
         let names_with_aliases = self.parse_names_with_aliases()?;
         self.eat(Token::CloseCurly, &context)?;
-        Ok(ast::Statement::Import(module, Some(names_with_aliases)))
+        Ok(ast::Statement::Import(module, module_alias, Some(names_with_aliases)))
     }
 
     pub fn parse_names_with_aliases(
