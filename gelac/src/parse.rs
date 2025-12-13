@@ -266,6 +266,7 @@ impl Parser {
             {
                 self.parse_abstraction()
             }
+            Some(Token::Var) => self.parse_bind(),
             Some(_) => self.parse_infix_lowest(),
             _ => Err(ParserError::unexpected_with_message(
                 self.next(),
@@ -285,7 +286,31 @@ impl Parser {
         let body = self.parse_expression()?;
         Ok(ast::Expression::Abstraction(parameter, Box::new(body)))
     }
-    //< Abstraction
+
+    //> Bind
+    pub fn parse_bind(
+        &mut self,
+    ) -> Result<ast::Expression, ParserError> {
+        let context = "var-in expression";
+        self.eat(Token::Var, &context)?;
+        let name = self.eat_name(&context)?;
+        self.eat(Token::Equals, &context)?;
+        let value = self.parse_expression()?;
+        self.eat(Token::In, &context)?;
+        let body = self.parse_expression()?;
+        let variable = ast::BindVariable(name, Box::new(value));
+        Ok(ast::Expression::Bind(variable, Box::new(body)))
+    }
+    //< Bind
+
+    //> When
+    //< When
+
+    //> If
+    //< If
+
+    //> New
+    //< New
 
     //> TypeCast
     pub fn parse_type_cast(&mut self) -> Result<ast::Expression, ParserError> {

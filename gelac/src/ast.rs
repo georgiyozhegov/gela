@@ -54,8 +54,7 @@ pub enum Expression {
     Atom(Atom),
     Abstraction(Name, Box<Expression>),
     Bind(
-        Name,
-        Box<Expression>, /* value */
+        BindVariable,
         Box<Expression>, /* body */
     ),
     When(WhenBranches),
@@ -73,6 +72,9 @@ pub enum Expression {
     ),
     Application(Atom, Vec<Atom>),
 }
+
+#[derive(Debug)]
+pub struct BindVariable(pub Name, pub Box<Expression>);
 
 #[derive(Debug)]
 pub struct BinaryOperator(pub Token);
