@@ -5,9 +5,10 @@ import subprocess
 examples = os.listdir("../examples")
 
 FULL = "--full" in sys.argv
-NO_COLORS = "--bw" in sys.argv # "bw" stands for black & white
+NO_COLORS = "--bw" in sys.argv  # "bw" stands for black & white
 SUCCESSFUL_CODES = [0]
 WIDTH = 80
+DO_NOT_DETECT_ERR = "--no-err" in sys.argv
 
 RED = "\033[91m"
 GREEN = "\033[92m"
@@ -36,23 +37,39 @@ for example in examples:
         if process.stdout:
             print(f"{GRAY}[stdout]{RESET}")
             print(process.stdout.decode())
+    if not DO_NOT_DETECT_ERR:
+        has_err = "Err" in process.stdout.decode()
+    else:
+        has_err = False
     print(f"{GRAY}[code]{RESET} {process.returncode}")
+    print(f"{GRAY}[has_err]{RESET} {has_err}")
     print(f"{GRAY}[test]{RESET} << {example}")
     print()
-    results.append((example, process.returncode))
+    results.append((example, process.returncode, has_err))
 
 print(" SUMMARY ".center(WIDTH, "="))
 passed = 0
 total = len(results)
-for example, code in results:
-    if code in SUCCESSFUL_CODES:
+for example, code, has_err in results:
+    if code in SUCCESSFUL_CODES and not has_err:
         passed += 1
         print(f"{GREEN}[passed]{RESET} {example}")
     else:
-        print(f"{RED}[failed]{RESET} {example} (exit code: {code})")
+        if has_err:
+            ignored = ": ignored" if DO_NOT_DETECT_ERR else ""
+            print(f"{RED}[failed]{RESET} {example} (has_err{ignored})")
+        else:
+            print(f"{RED}[failed]{RESET} {example} (exit code: {code})")
 
 print()
-print(f"{GRAY}[result]{RESET} {passed}/{total} tests passed")
+if DO_NOT_DETECT_ERR:
+    print(f"{GRAY}[note]{RESET} has_err ignored")
+print(f"{GRAY}[score]{RESET} {passed}/{total} passed")
 
 (status, color) = ("passed", GREEN) if passed == total else ("failed", RED)
 print(f"{GRAY}[result]{RESET} {color}{status}{RESET}")
+
+if status == "passed":
+    exit(0)
+else:
+    exit(1)
