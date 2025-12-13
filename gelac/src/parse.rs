@@ -438,6 +438,9 @@ impl Parser {
         while self.is_atom() {
             arguments.push(self.parse_atom()?);
         }
+        if arguments.is_empty() {
+            return Ok(ast::Expression::Atom(f));
+        }
         Ok(ast::Expression::Application(f, arguments))
     }
 
