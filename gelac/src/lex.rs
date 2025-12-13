@@ -100,6 +100,7 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
         }
         (':', Some(':')) => {
             chars.next();
+            chars.next();
             Some(Token::ColonColon)
         }
         (':', _) => {

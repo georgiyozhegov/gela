@@ -127,6 +127,10 @@ impl Parser {
     fn is_as(&mut self) -> bool {
         matches!(self.peek(), Some(Token::As))
     }
+
+    fn is_colon_colon(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::ColonColon))
+    }
 }
 
 //> Statement
@@ -278,7 +282,7 @@ impl Parser {
             }
             Some(Token::Var) => self.parse_bind(),
             Some(Token::New) => self.parse_new(),
-            Some(_) => self.parse_infix_lowest(),
+            Some(_) => self.parse_type_cast(),
             _ => Err(ParserError::unexpected_with_message(
                 self.next(),
                 "expression",
@@ -350,7 +354,7 @@ impl Parser {
     pub fn parse_type_cast(&mut self) -> Result<ast::Expression, ParserError> {
         let context = "type cast";
         let mut value = self.parse_infix_lowest()?;
-        if let Some(Token::ColonColon) = self.peek() {
+        while self.is_colon_colon() {
             self.next();
             let ty = self.eat_name(&context)?;
             value = ast::Expression::TypeCast(Box::new(value), ty);

@@ -1,0 +1,5 @@
+let x = 1 :: Int
+let y = "Gela" :: String
+
+let return = x ->
+    x + 1 :: Int
