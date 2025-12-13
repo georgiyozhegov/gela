@@ -277,6 +277,7 @@ impl Parser {
                 self.parse_abstraction()
             }
             Some(Token::Var) => self.parse_bind(),
+            Some(Token::New) => self.parse_new(),
             Some(_) => self.parse_infix_lowest(),
             _ => Err(ParserError::unexpected_with_message(
                 self.next(),
@@ -318,6 +319,31 @@ impl Parser {
     //< If
 
     //> New
+    pub fn parse_new(&mut self) -> Result<ast::Expression, ParserError> {
+        let context = "struct initialization";
+        self.eat(Token::New, &context)?;
+        let name = self.eat_name(&context)?;
+        self.eat(Token::OpenCurly, &context)?;
+        let fields = self.parse_new_fields()?;
+        self.eat(Token::CloseCurly, &context)?;
+        Ok(ast::Expression::New(name, fields))
+    }
+
+    pub fn parse_new_fields(&mut self) -> Result<ast::NewFields, ParserError> {
+        let context = "struct initialization";
+        let mut fields = Vec::new();
+        while !self.is_close_curly() {
+            let name = self.eat_name(&context)?;
+            self.eat(Token::Colon, &context)?;
+            let value = self.parse_expression()?;
+            if !self.is_close_curly() {
+                self.eat(Token::Comma, &context)?;
+            }
+            let field = (name, value);
+            fields.push(field);
+        }
+        Ok(ast::NewFields(fields))
+    }
     //< New
 
     //> TypeCast
