@@ -14,16 +14,16 @@ pub enum ParserError {
     Unexpected {
         actual: Token,
         expected: Token,
-        context: Vec<String>,
+        trace: Vec<String>,
     },
     UnexpectedWithStr {
         actual: Token,
         expected: String,
-        context: Vec<String>,
+        trace: Vec<String>,
     },
     UnexpectedEof {
         expected: String,
-        context: Vec<String>,
+        trace: Vec<String>,
     }, // Location can be restored
     EmptyStruct,
     EmptyEnum,
@@ -33,18 +33,18 @@ impl ParserError {
     pub fn unexpected(
         actual: Option<Token>,
         expected: Token,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Self {
         if let Some(actual) = actual {
             Self::Unexpected {
                 actual,
                 expected,
-                context: context.iter().map(|m| m.to_string()).collect(),
+                trace: trace.iter().map(|m| m.to_string()).collect(),
             }
         } else {
             Self::UnexpectedEof {
                 expected: expected.to_string(),
-                context: context.iter().map(|m| m.to_string()).collect(),
+                trace: trace.iter().map(|m| m.to_string()).collect(),
             }
         }
     }
@@ -52,18 +52,18 @@ impl ParserError {
     pub fn unexpected_with_str(
         actual: Option<Token>,
         expected: impl ToString,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Self {
         if let Some(actual) = actual {
             Self::UnexpectedWithStr {
                 actual,
                 expected: expected.to_string(),
-                context: context.iter().map(|m| m.to_string()).collect(),
+                trace: trace.iter().map(|m| m.to_string()).collect(),
             }
         } else {
             Self::UnexpectedEof {
                 expected: expected.to_string(),
-                context: context.iter().map(|m| m.to_string()).collect(),
+                trace: trace.iter().map(|m| m.to_string()).collect(),
             }
         }
     }
@@ -82,22 +82,22 @@ impl Parser {
     fn eat(
         &mut self,
         expected: Token,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<(), ParserError> {
         match self.next() {
             Some(actual) if actual == expected => Ok(()),
-            other => Err(ParserError::unexpected(other, expected, context)),
+            other => Err(ParserError::unexpected(other, expected, trace)),
         }
     }
 
     fn eat_name(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Name, ParserError> {
         match self.next() {
             Some(Token::Name(name)) => Ok(ast::Name(name)),
             other => {
-                Err(ParserError::unexpected_with_str(other, "name", context))
+                Err(ParserError::unexpected_with_str(other, "name", trace))
             }
         }
     }
@@ -135,12 +135,12 @@ impl Parser {
     fn step<T>(
         &mut self,
         f: impl FnOnce(&mut Self, &mut Vec<&'static str>) -> Result<T, ParserError>,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
         name: &'static str,
     ) -> Result<T, ParserError> {
-        context.push(name);
-        let node = f(self, context)?;
-        assert_eq!(context.pop(), Some(name));
+        trace.push(name);
+        let node = f(self, trace)?;
+        assert_eq!(trace.pop(), Some(name));
         Ok(node)
     }
 }
@@ -148,72 +148,72 @@ impl Parser {
 //> Statement
 impl Parser {
     pub fn parse_statement(&mut self) -> Result<ast::Statement, ParserError> {
-        self.step(Self::parse_statement_with_context, &mut vec![], "Statement")
+        self.step(Self::parse_statement_with_trace, &mut vec![], "Statement")
     }
 
-    fn parse_statement_with_context(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Statement, ParserError> {
+    fn parse_statement_with_trace(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Statement, ParserError> {
         match self.peek() {
-            Some(Token::Let) => self.parse_let(context),
-            Some(Token::Struct) => self.parse_struct(context),
-            Some(Token::Enum) => self.parse_enum(context),
-            Some(Token::Import) => self.parse_import(context),
+            Some(Token::Let) => self.parse_let(trace),
+            Some(Token::Struct) => self.parse_struct(trace),
+            Some(Token::Enum) => self.parse_enum(trace),
+            Some(Token::Import) => self.parse_import(trace),
             _ => Err(ParserError::unexpected_with_str(
                 self.next(),
                 "statement",
-                context,
+                trace,
             )),
         }
     }
 
     //> Let
-    pub fn parse_let(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Statement, ParserError> {
-        self.step(Self::parse_let_with_context, context, "Let")
+    pub fn parse_let(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Statement, ParserError> {
+        self.step(Self::parse_let_with_trace, trace, "Let")
     }
 
-    pub fn parse_let_with_context(
+    pub fn parse_let_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
-        self.eat(Token::Let, context)?;
-        let name = self.eat_name(context)?;
-        self.eat(Token::Equals, context)?;
-        let value = self.parse_expression(context)?;
+        self.eat(Token::Let, trace)?;
+        let name = self.eat_name(trace)?;
+        self.eat(Token::Equals, trace)?;
+        let value = self.parse_expression(trace)?;
         Ok(ast::Statement::Let(name, value))
     }
     //< Let
 
     //> Struct
-    pub fn parse_struct(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Statement, ParserError> {
-        self.step(Self::parse_struct_with_context, context, "Struct")
+    pub fn parse_struct(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Statement, ParserError> {
+        self.step(Self::parse_struct_with_trace, trace, "Struct")
     }
 
-    pub fn parse_struct_with_context(
+    pub fn parse_struct_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
-        self.eat(Token::Struct, context)?;
-        let name = self.eat_name(context)?;
-        self.eat(Token::OpenCurly, context)?;
-        let fields = self.parse_struct_fields(context)?;
-        self.eat(Token::CloseCurly, context)?;
+        self.eat(Token::Struct, trace)?;
+        let name = self.eat_name(trace)?;
+        self.eat(Token::OpenCurly, trace)?;
+        let fields = self.parse_struct_fields(trace)?;
+        self.eat(Token::CloseCurly, trace)?;
         Ok(ast::Statement::Struct(name, fields))
     }
 
-    pub fn parse_struct_fields(&mut self, context: &mut Vec<&'static str>) -> Result<ast::StructFields, ParserError> {
-        self.step(Self::parse_struct_fields_with_context, context, "StructFields")
+    pub fn parse_struct_fields(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::StructFields, ParserError> {
+        self.step(Self::parse_struct_fields_with_trace, trace, "StructFields")
     }
 
-    pub fn parse_struct_fields_with_context(
+    pub fn parse_struct_fields_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::StructFields, ParserError> {
         let mut fields = Vec::new();
         while !self.is_close_curly() {
-            let name = self.eat_name(context)?;
-            self.eat(Token::Colon, context)?;
-            let ty = self.eat_name(context)?;
+            let name = self.eat_name(trace)?;
+            self.eat(Token::Colon, trace)?;
+            let ty = self.eat_name(trace)?;
             if !self.is_close_curly() {
-                self.eat(Token::Comma, context)?;
+                self.eat(Token::Comma, trace)?;
             }
             let field = (name, ty);
             fields.push(field);
@@ -225,35 +225,35 @@ impl Parser {
     //< Struct
 
     //> Enum
-    pub fn parse_enum(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Statement, ParserError> {
-        self.step(Self::parse_enum_with_context, context, "Enum")
+    pub fn parse_enum(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Statement, ParserError> {
+        self.step(Self::parse_enum_with_trace, trace, "Enum")
     }
 
-    pub fn parse_enum_with_context(
+    pub fn parse_enum_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
-        self.eat(Token::Enum, context)?;
-        let name = self.eat_name(context)?;
-        self.eat(Token::OpenCurly, context)?;
-        let variants = self.parse_enum_variants(context)?;
-        self.eat(Token::CloseCurly, context)?;
+        self.eat(Token::Enum, trace)?;
+        let name = self.eat_name(trace)?;
+        self.eat(Token::OpenCurly, trace)?;
+        let variants = self.parse_enum_variants(trace)?;
+        self.eat(Token::CloseCurly, trace)?;
         Ok(ast::Statement::Enum(name, variants))
     }
 
-    pub fn parse_enum_variants(&mut self, context: &mut Vec<&'static str>) -> Result<ast::EnumVariants, ParserError> {
-        self.step(Self::parse_enum_variants_with_context, context, "EnumVariants")
+    pub fn parse_enum_variants(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::EnumVariants, ParserError> {
+        self.step(Self::parse_enum_variants_with_trace, trace, "EnumVariants")
     }
 
-    pub fn parse_enum_variants_with_context(
+    pub fn parse_enum_variants_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::EnumVariants, ParserError> {
         let mut variants = Vec::new();
         while !self.is_close_curly() {
-            let variant = self.eat_name(context)?;
+            let variant = self.eat_name(trace)?;
             if !self.is_close_curly() {
-                self.eat(Token::Comma, context)?;
+                self.eat(Token::Comma, trace)?;
             }
             variants.push(variant);
         }
@@ -264,28 +264,28 @@ impl Parser {
     //< Enum
 
     //> Import
-    pub fn parse_import(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Statement, ParserError> {
-        self.step(Self::parse_import_with_context, context, "Import")
+    pub fn parse_import(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Statement, ParserError> {
+        self.step(Self::parse_import_with_trace, trace, "Import")
     }
 
-    pub fn parse_import_with_context(
+    pub fn parse_import_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
-        self.eat(Token::Import, context)?;
-        let module = self.eat_name(context)?;
+        self.eat(Token::Import, trace)?;
+        let module = self.eat_name(trace)?;
         let module_alias = if self.is_as() {
             self.next();
-            Some(self.eat_name(context)?)
+            Some(self.eat_name(trace)?)
         } else {
             None
         };
         if !self.is_open_curly() {
             return Ok(ast::Statement::Import(module, module_alias, None));
         }
-        self.eat(Token::OpenCurly, context)?;
-        let names_with_aliases = self.parse_names_with_aliases(context)?;
-        self.eat(Token::CloseCurly, context)?;
+        self.eat(Token::OpenCurly, trace)?;
+        let names_with_aliases = self.parse_names_with_aliases(trace)?;
+        self.eat(Token::CloseCurly, trace)?;
         Ok(ast::Statement::Import(
             module,
             module_alias,
@@ -293,25 +293,25 @@ impl Parser {
         ))
     }
 
-    pub fn parse_names_with_aliases(&mut self, context: &mut Vec<&'static str>) -> Result<ast::NamesWithAliases, ParserError> {
-        self.step(Self::parse_names_with_aliases_with_context, context, "NamesWithAliases")
+    pub fn parse_names_with_aliases(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::NamesWithAliases, ParserError> {
+        self.step(Self::parse_names_with_aliases_with_trace, trace, "NamesWithAliases")
     }
 
-    pub fn parse_names_with_aliases_with_context(
+    pub fn parse_names_with_aliases_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::NamesWithAliases, ParserError> {
         let mut names_with_aliases = Vec::new();
         while !self.is_close_curly() {
-            let name = self.eat_name(context)?;
+            let name = self.eat_name(trace)?;
             let alias: Option<ast::Name> = if self.is_as() {
-                self.eat(Token::As, context)?;
-                Some(self.eat_name(context)?)
+                self.eat(Token::As, trace)?;
+                Some(self.eat_name(trace)?)
             } else {
                 None
             };
             if !self.is_close_curly() {
-                self.eat(Token::Comma, context)?;
+                self.eat(Token::Comma, trace)?;
             }
             let name_with_alias = (name, alias);
             names_with_aliases.push(name_with_alias);
@@ -324,61 +324,61 @@ impl Parser {
 
 //> Expression
 impl Parser {
-    pub fn parse_expression(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_expression_with_context, context, "Expression")
+    pub fn parse_expression(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_expression_with_trace, trace, "Expression")
     }
 
-    pub fn parse_expression_with_context(
+    pub fn parse_expression_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
         match self.peek() {
             Some(Token::Name(_))
                 if matches!(self.nth(1), Some(Token::Arrow)) =>
             {
-                self.parse_abstraction(context)
+                self.parse_abstraction(trace)
             }
-            Some(Token::Var) => self.parse_bind(context),
-            Some(Token::New) => self.parse_new(context),
-            Some(_) => self.parse_type_cast(context),
+            Some(Token::Var) => self.parse_bind(trace),
+            Some(Token::New) => self.parse_new(trace),
+            Some(_) => self.parse_type_cast(trace),
             _ => Err(ParserError::unexpected_with_str(
                 self.next(),
                 "expression",
-                context,
+                trace,
             )),
         }
     }
 
     //> Abstraction
-    pub fn parse_abstraction(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_abstraction_with_context, context, "Abstraction")
+    pub fn parse_abstraction(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_abstraction_with_trace, trace, "Abstraction")
     }
 
-    pub fn parse_abstraction_with_context(
+    pub fn parse_abstraction_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        let parameter = self.eat_name(context)?;
-        self.eat(Token::Arrow, context)?;
-        let body = self.parse_expression(context)?;
+        let parameter = self.eat_name(trace)?;
+        self.eat(Token::Arrow, trace)?;
+        let body = self.parse_expression(trace)?;
         Ok(ast::Expression::Abstraction(parameter, Box::new(body)))
     }
 
     //> Bind
-    pub fn parse_bind(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_bind_with_context, context, "Bind")
+    pub fn parse_bind(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_bind_with_trace, trace, "Bind")
     }
 
-    pub fn parse_bind_with_context(
+    pub fn parse_bind_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        self.eat(Token::Var, context)?;
-        let name = self.eat_name(context)?;
-        self.eat(Token::Equals, context)?;
-        let value = self.parse_expression(context)?;
-        self.eat(Token::In, context)?;
-        let body = self.parse_expression(context)?;
+        self.eat(Token::Var, trace)?;
+        let name = self.eat_name(trace)?;
+        self.eat(Token::Equals, trace)?;
+        let value = self.parse_expression(trace)?;
+        self.eat(Token::In, trace)?;
+        let body = self.parse_expression(trace)?;
         let variable = ast::BindVariable(name, Box::new(value));
         Ok(ast::Expression::Bind(variable, Box::new(body)))
     }
@@ -391,37 +391,37 @@ impl Parser {
     //< If
 
     //> New
-    pub fn parse_new(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_new_with_context, context, "New")
+    pub fn parse_new(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_new_with_trace, trace, "New")
     }
 
-    pub fn parse_new_with_context(
+    pub fn parse_new_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        self.eat(Token::New, context)?;
-        let name = self.eat_name(context)?;
-        self.eat(Token::OpenCurly, context)?;
-        let fields = self.parse_new_fields(context)?;
-        self.eat(Token::CloseCurly, context)?;
+        self.eat(Token::New, trace)?;
+        let name = self.eat_name(trace)?;
+        self.eat(Token::OpenCurly, trace)?;
+        let fields = self.parse_new_fields(trace)?;
+        self.eat(Token::CloseCurly, trace)?;
         Ok(ast::Expression::New(name, fields))
     }
 
-    pub fn parse_new_fields(&mut self, context: &mut Vec<&'static str>) -> Result<ast::NewFields, ParserError> {
-        self.step(Self::parse_new_fields_with_context, context, "NewFields")
+    pub fn parse_new_fields(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::NewFields, ParserError> {
+        self.step(Self::parse_new_fields_with_trace, trace, "NewFields")
     }
 
-    pub fn parse_new_fields_with_context(
+    pub fn parse_new_fields_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::NewFields, ParserError> {
         let mut fields = Vec::new();
         while !self.is_close_curly() {
-            let name = self.eat_name(context)?;
-            self.eat(Token::Colon, context)?;
-            let value = self.parse_expression(context)?;
+            let name = self.eat_name(trace)?;
+            self.eat(Token::Colon, trace)?;
+            let value = self.parse_expression(trace)?;
             if !self.is_close_curly() {
-                self.eat(Token::Comma, context)?;
+                self.eat(Token::Comma, trace)?;
             }
             let field = (name, value);
             fields.push(field);
@@ -431,18 +431,18 @@ impl Parser {
     //< New
 
     //> TypeCast
-    pub fn parse_type_cast(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_type_cast_with_context, context, "TypeCast")
+    pub fn parse_type_cast(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_type_cast_with_trace, trace, "TypeCast")
     }
 
-    pub fn parse_type_cast_with_context(
+    pub fn parse_type_cast_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        let mut value = self.parse_infix_lowest(context)?;
+        let mut value = self.parse_infix_lowest(trace)?;
         while self.is_colon_colon() {
             self.next();
-            let ty = self.eat_name(context)?;
+            let ty = self.eat_name(trace)?;
             value = ast::Expression::TypeCast(Box::new(value), ty);
         }
         Ok(value)
@@ -450,18 +450,18 @@ impl Parser {
     //< TypeCast
 
     //> InfixLowest
-    pub fn parse_infix_lowest(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_infix_lowest_with_context, context, "InfixLowest")
+    pub fn parse_infix_lowest(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_infix_lowest_with_trace, trace, "InfixLowest")
     }
 
-    pub fn parse_infix_lowest_with_context(
+    pub fn parse_infix_lowest_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_infix_lower(context)?;
+        let mut lhs = self.parse_infix_lower(trace)?;
         if self.is_infix_lowest_operator() {
             let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_lowest(context)?;
+            let rhs = self.parse_infix_lowest(trace)?;
             lhs =
                 ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
@@ -474,18 +474,18 @@ impl Parser {
     //< InfixLowest
 
     //> InfixLower
-    pub fn parse_infix_lower(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_infix_lower_with_context, context, "InfixLower")
+    pub fn parse_infix_lower(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_infix_lower_with_trace, trace, "InfixLower")
     }
 
-    pub fn parse_infix_lower_with_context(
+    pub fn parse_infix_lower_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_infix_low(context)?;
+        let mut lhs = self.parse_infix_low(trace)?;
         if self.is_infix_lower_operator() {
             let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_lowest(context)?;
+            let rhs = self.parse_infix_lowest(trace)?;
             lhs =
                 ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
@@ -498,17 +498,17 @@ impl Parser {
     //< InfixLower
 
     //> InfixLow
-    pub fn parse_infix_low(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_infix_low_with_context, context, "InfixLow")
+    pub fn parse_infix_low(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_infix_low_with_trace, trace, "InfixLow")
     }
-    pub fn parse_infix_low_with_context(
+    pub fn parse_infix_low_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_infix_high(context)?;
+        let mut lhs = self.parse_infix_high(trace)?;
         if self.is_infix_low_operator() {
             let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_low(context)?;
+            let rhs = self.parse_infix_low(trace)?;
             lhs =
                 ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
@@ -531,17 +531,17 @@ impl Parser {
     //< InfixLow
 
     //> InfixHigh
-    pub fn parse_infix_high(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_infix_high_with_context, context, "InfixHigh")
+    pub fn parse_infix_high(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_infix_high_with_trace, trace, "InfixHigh")
     }
-    pub fn parse_infix_high_with_context(
+    pub fn parse_infix_high_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_infix_higher(context)?;
+        let mut lhs = self.parse_infix_higher(trace)?;
         if self.is_infix_high_operator() {
             let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_high(context)?;
+            let rhs = self.parse_infix_high(trace)?;
             lhs =
                 ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
@@ -554,18 +554,18 @@ impl Parser {
     //< InfixHigh
 
     //> InfixHigher
-    pub fn parse_infix_higher(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_infix_higher_with_context, context, "InfixHigher")
+    pub fn parse_infix_higher(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_infix_higher_with_trace, trace, "InfixHigher")
     }
 
-    pub fn parse_infix_higher_with_context(
+    pub fn parse_infix_higher_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_infix_highest(context)?;
+        let mut lhs = self.parse_infix_highest(trace)?;
         if self.is_infix_higher_operator() {
             let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_higher(context)?;
+            let rhs = self.parse_infix_higher(trace)?;
             lhs =
                 ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
@@ -581,18 +581,18 @@ impl Parser {
     //< InfixHigher
 
     //> InfixHighest
-    pub fn parse_infix_highest(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_infix_highest_with_context, context, "InfixHighest")
+    pub fn parse_infix_highest(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_infix_highest_with_trace, trace, "InfixHighest")
     }
 
-    pub fn parse_infix_highest_with_context(
+    pub fn parse_infix_highest_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_application(context)?;
+        let mut lhs = self.parse_application(trace)?;
         if self.is_infix_highest_operator() {
             let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_highest(context)?;
+            let rhs = self.parse_infix_highest(trace)?;
             lhs =
                 ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
         }
@@ -605,18 +605,18 @@ impl Parser {
     //< InfixHighest
 
     //> Application
-    pub fn parse_application(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
-        self.step(Self::parse_application_with_context, context, "Application")
+    pub fn parse_application(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_application_with_trace, trace, "Application")
     }
 
-    pub fn parse_application_with_context(
+    pub fn parse_application_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        let f = self.parse_atom(context)?;
+        let f = self.parse_atom(trace)?;
         let mut arguments = Vec::new();
         while self.is_atom() {
-            arguments.push(self.parse_atom(context)?);
+            arguments.push(self.parse_atom(trace)?);
         }
         if arguments.is_empty() {
             return Ok(ast::Expression::Atom(f));
@@ -638,13 +638,13 @@ impl Parser {
     //< Application
 
     //> Atom
-    pub fn parse_atom(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Atom, ParserError> {
-        self.step(Self::parse_atom_with_context, context, "Atom")
+    pub fn parse_atom(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Atom, ParserError> {
+        self.step(Self::parse_atom_with_trace, trace, "Atom")
     }
 
-    pub fn parse_atom_with_context(
+    pub fn parse_atom_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Atom, ParserError> {
         match self.next() {
             Some(Token::Name(identifier)) => {
@@ -652,27 +652,27 @@ impl Parser {
             }
             Some(Token::Integer(value)) => Ok(ast::Atom::Integer(value)),
             Some(Token::String(text)) => Ok(ast::Atom::String(text)),
-            Some(Token::OpenRound) => self.parse_parenthesized(context),
+            Some(Token::OpenRound) => self.parse_parenthesized(trace),
             actual => Err(ParserError::unexpected_with_str(
                 actual,
                 format!("name, integer, string or {}", Token::OpenRound),
-                context,
+                trace,
             )),
         }
     }
 
     //> Parenthesized
-    pub fn parse_parenthesized(&mut self, context: &mut Vec<&'static str>) -> Result<ast::Atom, ParserError> {
-        self.step(Self::parse_parenthesized_with_context, context, "Parenthesized")
+    pub fn parse_parenthesized(&mut self, trace: &mut Vec<&'static str>) -> Result<ast::Atom, ParserError> {
+        self.step(Self::parse_parenthesized_with_trace, trace, "Parenthesized")
     }
 
-    pub fn parse_parenthesized_with_context(
+    pub fn parse_parenthesized_with_trace(
         &mut self,
-        context: &mut Vec<&'static str>,
+        trace: &mut Vec<&'static str>,
     ) -> Result<ast::Atom, ParserError> {
         // "(" was consumed
-        let inner = self.parse_expression(context)?;
-        self.eat(Token::CloseRound, context)?;
+        let inner = self.parse_expression(trace)?;
+        self.eat(Token::CloseRound, trace)?;
         Ok(ast::Atom::Parenthesized(Box::new(inner)))
     }
     //< Parenthesized
