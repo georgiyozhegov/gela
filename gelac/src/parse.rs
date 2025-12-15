@@ -655,7 +655,7 @@ impl Parser {
             Some(Token::OpenRound) => self.parse_parenthesized(trace),
             actual => Err(ParserError::unexpected_with_str(
                 actual,
-                format!("name, integer, string or {}", Token::OpenRound),
+                format!("variable, integer, string or {}", Token::OpenRound),
                 trace,
             )),
         }
