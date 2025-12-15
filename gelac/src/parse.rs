@@ -182,7 +182,7 @@ impl Parser {
     ) -> Result<ast::Statement, ParserError> {
         self.eat(Token::Let, trace)?;
         let name = self.eat_name(trace)?;
-        self.eat(Token::Equals, trace)?;
+        self.eat(Token::Equal, trace)?;
         let value = self.parse_expression(trace)?;
         Ok(ast::Statement::Let(name, value))
     }
@@ -412,7 +412,7 @@ impl Parser {
     ) -> Result<ast::Expression, ParserError> {
         self.eat(Token::Var, trace)?;
         let name = self.eat_name(trace)?;
-        self.eat(Token::Equals, trace)?;
+        self.eat(Token::Equal, trace)?;
         let value = self.parse_expression(trace)?;
         self.eat(Token::In, trace)?;
         let body = self.parse_expression(trace)?;

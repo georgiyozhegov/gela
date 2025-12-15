@@ -60,7 +60,7 @@ If =
   "if" , Expression , "then" , Expression , "else" , Expression ;
 
 New =
-  name , "{" , [ SetField , { "," , SetField } , [ "," ]  ] , "}" ;
+  "new" , name , "{" , [ SetField , { "," , SetField } , [ "," ]  ] , "}" ;
 
 SetField =
   name , ":" , Expression ;
