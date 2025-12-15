@@ -71,7 +71,8 @@ pub enum Expression {
         Box<Expression>, /* lhs */
         Box<Expression>, /* rhs */
     ),
-    Application(Atom, Vec<Atom>),
+    Application(Box<Expression>, Vec<Expression> /* arguments */),
+    Property(Atom, Vec<Atom> /* properties */),
 }
 
 #[derive(Debug)]

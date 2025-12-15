@@ -9,6 +9,10 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Result<ast::Statement, ParserError>> {
     .collect()
 }
 
+fn expected_atom_message() -> String {
+    format!("variable, integer, string or {}", Token::OpenRound)
+}
+
 #[derive(Debug)]
 pub enum ParserError {
     Unexpected {
@@ -134,6 +138,10 @@ impl Parser {
 
     fn is_pipe(&mut self) -> bool {
         matches!(self.peek(), Some(Token::Pipe))
+    }
+
+    fn is_dot(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::Dot))
     }
 
     fn step<T>(
@@ -750,15 +758,15 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
-        let f = self.parse_atom(trace)?;
+        let f = self.parse_property(trace)?;
         let mut arguments = Vec::new();
         while self.is_atom() {
-            arguments.push(self.parse_atom(trace)?);
+            arguments.push(self.parse_property(trace)?);
         }
         if arguments.is_empty() {
-            return Ok(ast::Expression::Atom(f));
+            return Ok(f);
         }
-        Ok(ast::Expression::Application(f, arguments))
+        Ok(ast::Expression::Application(Box::new(f), arguments))
     }
 
     fn is_atom(&self) -> bool {
@@ -773,6 +781,39 @@ impl Parser {
         )
     }
     //< Application
+
+    //> Property
+    pub fn parse_property(
+        &mut self,
+        trace: &mut Vec<&'static str>,
+    ) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_property_wo_mark, trace, "Property")
+    }
+
+    pub fn parse_property_wo_mark(
+        &mut self,
+        trace: &mut Vec<&'static str>,
+    ) -> Result<ast::Expression, ParserError> {
+        let a = self.parse_atom(trace)?;
+        let mut properties = Vec::new();
+        while self.is_dot() {
+            self.next(); // Skip `.`
+            if self.is_atom() {
+                properties.push(self.parse_atom(trace)?);
+            } else {
+                return Err(ParserError::unexpected_with_str(
+                    self.next(),
+                    expected_atom_message(),
+                    trace,
+                ));
+            }
+        }
+        if properties.is_empty() {
+            return Ok(ast::Expression::Atom(a));
+        }
+        Ok(ast::Expression::Property(a, properties))
+    }
+    //< Property
 
     //> Atom
     pub fn parse_atom(
@@ -795,7 +836,7 @@ impl Parser {
             Some(Token::OpenRound) => self.parse_parenthesized(trace),
             actual => Err(ParserError::unexpected_with_str(
                 actual,
-                format!("variable, integer, string or {}", Token::OpenRound),
+                expected_atom_message(),
                 trace,
             )),
         }

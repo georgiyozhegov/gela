@@ -1,0 +1,4 @@
+let a = x.y
+let b = x.y.z
+
+let application = a.b.c d.e f.g # (a.b.c) (d.e) (f.g)
