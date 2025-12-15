@@ -370,6 +370,7 @@ impl Parser {
                 self.parse_abstraction(trace)
             }
             Some(Token::Var) => self.parse_bind(trace),
+            Some(Token::If) => self.parse_if(trace),
             Some(Token::New) => self.parse_new(trace),
             Some(_) => self.parse_type_cast(trace),
             _ => Err(ParserError::unexpected_with_str(
@@ -425,6 +426,29 @@ impl Parser {
     //< When
 
     //> If
+    pub fn parse_if(
+        &mut self,
+        trace: &mut Vec<&'static str>,
+    ) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_if_wo_mark, trace, "If")
+    }
+
+    pub fn parse_if_wo_mark(
+        &mut self,
+        trace: &mut Vec<&'static str>,
+    ) -> Result<ast::Expression, ParserError> {
+        self.eat(Token::If, trace)?;
+        let condition = self.parse_expression(trace)?;
+        self.eat(Token::Then, trace)?;
+        let then = self.parse_expression(trace)?;
+        self.eat(Token::Else, trace)?;
+        let otherwise = self.parse_expression(trace)?;
+        Ok(ast::Expression::If(
+            Box::new(condition),
+            Box::new(then),
+            Box::new(otherwise),
+        ))
+    }
     //< If
 
     //> New
