@@ -1,4 +1,4 @@
-use crate::ast::{self, WhenBranches};
+use crate::ast;
 use crate::lex::Token;
 
 pub fn parse(tokens: Vec<Token>) -> Vec<Result<ast::Statement, ParserError>> {
@@ -474,7 +474,7 @@ impl Parser {
         }
         self.eat(Token::Else, trace)?;
         let default = self.parse_expression(trace)?;
-        let branches = WhenBranches(branches, Box::new(default));
+        let branches = ast::WhenBranches(branches, Box::new(default));
         Ok(ast::Expression::When(branches))
     }
     //< When
