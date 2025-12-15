@@ -1,4 +1,4 @@
-use crate::ast;
+use crate::ast::{self, WhenBranches};
 use crate::lex::Token;
 
 pub fn parse(tokens: Vec<Token>) -> Vec<Result<ast::Statement, ParserError>> {
@@ -130,6 +130,10 @@ impl Parser {
 
     fn is_colon_colon(&mut self) -> bool {
         matches!(self.peek(), Some(Token::ColonColon))
+    }
+
+    fn is_pipe(&mut self) -> bool {
+        matches!(self.peek(), Some(Token::Pipe))
     }
 
     fn step<T>(
@@ -370,6 +374,7 @@ impl Parser {
                 self.parse_abstraction(trace)
             }
             Some(Token::Var) => self.parse_bind(trace),
+            Some(Token::When) => self.parse_when(trace),
             Some(Token::If) => self.parse_if(trace),
             Some(Token::New) => self.parse_new(trace),
             Some(_) => self.parse_type_cast(trace),
@@ -423,6 +428,47 @@ impl Parser {
     //< Bind
 
     //> When
+    pub fn parse_when(
+        &mut self,
+        trace: &mut Vec<&'static str>,
+    ) -> Result<ast::Expression, ParserError> {
+        self.step(Self::parse_when_wo_mark, trace, "When")
+    }
+
+    pub fn parse_when_wo_mark(
+        &mut self,
+        trace: &mut Vec<&'static str>,
+    ) -> Result<ast::Expression, ParserError> {
+        self.eat(Token::When, trace)?;
+        let mut branches = Vec::new();
+        // Skip optional `|`
+        if self.is_pipe() {
+            self.next();
+        }
+        loop {
+            let condition = self.parse_expression(trace)?;
+            self.eat(Token::Then, trace)?;
+            let then = self.parse_expression(trace)?;
+            branches.push((condition, then));
+            match self.peek() {
+                Some(Token::Pipe) => {
+                    self.next();
+                }
+                Some(Token::Else) => break, // `else` is required to break the loop
+                _ => {
+                    return Err(ParserError::unexpected_with_str(
+                        self.next(),
+                        format!("{} or {}", Token::Pipe, Token::Else),
+                        trace,
+                    ));
+                }
+            }
+        }
+        self.eat(Token::Else, trace)?;
+        let default = self.parse_expression(trace)?;
+        let branches = WhenBranches(branches, Box::new(default));
+        Ok(ast::Expression::When(branches))
+    }
     //< When
 
     //> If
