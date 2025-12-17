@@ -1,14 +1,20 @@
 use std::{iter::Peekable, str::Chars};
 
-pub fn lex(source: String) -> Vec<Token> {
+pub fn lex(source: String) -> Result<Vec<Token>, LexerError> {
     let mut chars = source.chars().peekable();
     std::iter::from_fn(move || token(&mut chars)).collect()
+}
+
+#[derive(Debug)]
+pub enum LexerError {
+    UnknownChar(char),
+    UnterminatedString,
 }
 
 macro_rules! one_ch {
     ($chars:expr, $token:expr) => {{
         $chars.next();
-        Some($token)
+        Some(Ok($token))
     }};
 }
 
@@ -16,11 +22,11 @@ macro_rules! two_ch {
     ($chars:expr, $token:expr) => {{
         $chars.next();
         $chars.next();
-        Some($token)
+        Some(Ok($token))
     }};
 }
 
-fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
+fn token(chars: &mut Peekable<Chars>) -> Option<Result<Token, LexerError>> {
     match this_and_next(chars)? {
         ('a'..='z' | 'A'..='Z' | '_', _) => {
             let mut lexeme = eat(
@@ -31,21 +37,21 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             if chars.peek().is_some_and(|ch| matches!(ch, '?' | '!')) {
                 lexeme.push(chars.next().unwrap());
             }
-            Some(token_from_str(lexeme))
+            Some(Ok(name_or_keyword(lexeme)))
         }
         ('0'..='9', _) => {
             let lexeme = eat(chars, |ch| matches!(ch, '0'..='9' | '_'));
             let value: i128 = lexeme.parse().unwrap(); // Todo: error handling
-            Some(Token::Integer(value))
+            Some(Ok(Token::Integer(value)))
         }
         ('"', _) => {
             chars.next(); // Skip the leading quote
             let lexeme = eat(chars, |ch| *ch != '"');
             if chars.peek().is_none() {
-                panic!("Unterminated string"); // Todo: error handling
+                return Some(Err(LexerError::UnterminatedString));
             }
             chars.next(); // Skip the trailing quote
-            Some(Token::String(lexeme))
+            Some(Ok(Token::String(lexeme)))
         }
         ('#', _) => {
             eat(chars, |ch| *ch != '\n'); // Skip until the next line
@@ -79,13 +85,11 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Token> {
             eat(chars, |ch| matches!(ch, ' ' | '\t' | '\n' | '\r')); // Just skip whitespace
             token(chars) // And lex an actual token
         }
-        (ch, _) => {
-            panic!("Unknown character: {ch:?}"); // Todo: error handling
-        }
+        (ch, _) => Some(Err(LexerError::UnknownChar(ch))),
     }
 }
 
-fn token_from_str(lexeme: String) -> Token {
+fn name_or_keyword(lexeme: String) -> Token {
     match lexeme.as_str() {
         "let" => Token::Let,
         "struct" => Token::Struct,
@@ -101,7 +105,18 @@ fn token_from_str(lexeme: String) -> Token {
         "new" => Token::New,
         "and" => Token::And,
         "or" => Token::Or,
-        _ => Token::Name(lexeme), // If it's not a keyword, then it's a name
+        _ => {
+            let kind = name_kind(&lexeme);
+            Token::Name(lexeme, kind)
+        } // If it's not a keyword, then it's a name
+    }
+}
+
+fn name_kind(lexeme: &str) -> NameKind {
+    if matches!(lexeme.chars().next(), Some('A'..='Z')) {
+        NameKind::Type
+    } else {
+        NameKind::Variable
     }
 }
 
@@ -123,7 +138,7 @@ fn eat(chars: &mut Peekable<Chars>, condition: fn(&char) -> bool) -> String {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
     //> Literals
-    Name(String),
+    Name(String, NameKind),
     Integer(i128),
     String(String),
     //< Literals
@@ -173,11 +188,20 @@ pub enum Token {
     //< Operators
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NameKind {
+    Variable,
+    Type,
+}
+
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             //> Literals
-            Self::Name(name) => write!(f, "name `{name}`"),
+            Self::Name(name, kind) => match kind {
+                NameKind::Variable => write!(f, "name `{name}`"),
+                NameKind::Type => write!(f, "type `{name}`"),
+            },
             Self::Integer(value) => write!(f, "integer `{value}`"),
             Self::String(text) => write!(f, "string `{text}`"),
             //< Literals
