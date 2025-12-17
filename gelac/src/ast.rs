@@ -1,4 +1,4 @@
-use crate::lex::Token;
+use crate::lex::{NameKind, Token};
 use crate::parse::ParserError;
 
 //> Statement
@@ -14,11 +14,11 @@ pub enum Statement {
     ),
 }
 
-pub struct Name(pub String);
+pub struct Name(pub String, pub NameKind);
 
 impl std::fmt::Debug for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Name({:?})", self.0)
+        write!(f, "Name({:?}, {:?})", self.0, self.1)
     }
 }
 

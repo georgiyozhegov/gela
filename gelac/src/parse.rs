@@ -99,7 +99,7 @@ impl Parser {
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Name, ParserError> {
         match self.next() {
-            Some(Token::Name(name)) => Ok(ast::Name(name)),
+            Some(Token::Name(name, kind)) => Ok(ast::Name(name, kind)),
             other => {
                 Err(ParserError::unexpected_with_str(other, "name", trace))
             }
@@ -376,7 +376,7 @@ impl Parser {
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Expression, ParserError> {
         match self.peek() {
-            Some(Token::Name(_))
+            Some(Token::Name(_, _))
                 if matches!(self.nth(1), Some(Token::Arrow)) =>
             {
                 self.parse_abstraction(trace)
@@ -773,7 +773,7 @@ impl Parser {
         matches!(
             self.peek(),
             Some(
-                Token::Name(_)
+                Token::Name(_, _)
                     | Token::Integer(_)
                     | Token::String(_)
                     | Token::OpenRound
@@ -828,8 +828,8 @@ impl Parser {
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Atom, ParserError> {
         match self.next() {
-            Some(Token::Name(identifier)) => {
-                Ok(ast::Atom::Variable(ast::Name(identifier)))
+            Some(Token::Name(identifier, kind)) => {
+                Ok(ast::Atom::Variable(ast::Name(identifier, kind)))
             }
             Some(Token::Integer(value)) => Ok(ast::Atom::Integer(value)),
             Some(Token::String(text)) => Ok(ast::Atom::String(text)),
