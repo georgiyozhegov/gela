@@ -9,7 +9,7 @@ NO_COLORS = "--bw" in sys.argv  # "bw" stands for black & white
 SUCCESSFUL_CODES = [0]
 WIDTH = 80
 DO_NOT_DETECT_ERR = "--no-err" in sys.argv
-SHOULD_FAIL_PREFIX = "sf:"
+SHOULD_FAIL_PREFIX = "err:"
 
 RED = "\033[91m"
 GREEN = "\033[92m"
