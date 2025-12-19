@@ -55,6 +55,7 @@ def test(example):
 
 examples = sorted(os.listdir(EXAMPLES_PATH), key=lambda file: file.lstrip(ERR_PREFIX))
 
+
 def main():
     process = sp.run(
         ["cargo", "build"],
@@ -94,7 +95,11 @@ def main():
             if result.has_err or result.code != 0:
                 passed += 1
                 if result.code != 0:
-                    fprint(green, "failed", f"{result.example} (should_fail, exit code: {result.code})")
+                    fprint(
+                        green,
+                        "failed",
+                        f"{result.example} (should_fail, exit code: {result.code})",
+                    )
                 else:
                     fprint(green, "failed", f"{result.example} (should_fail, has_err)")
             else:
@@ -105,7 +110,9 @@ def main():
                 fprint(green, "passed", result.example)
             else:
                 if result.code != 0:
-                    fprint(red, "failed", f"{result.example} (exit code: {result.code})")
+                    fprint(
+                        red, "failed", f"{result.example} (exit code: {result.code})"
+                    )
                 else:
                     fprint(red, "failed", f"{result.example} (has_err)")
 
@@ -118,6 +125,7 @@ def main():
     fprint(gray, "result", color(message))
     if message != "passed":
         exit(1)
+
 
 if __name__ == "__main__":
     main()
