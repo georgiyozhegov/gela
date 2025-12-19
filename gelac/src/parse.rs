@@ -33,6 +33,43 @@ pub enum ParserError {
     EmptyEnum,
 }
 
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Unexpected { actual, expected, trace } => {
+                write!(f, "Expected {expected}, got {actual}")?;
+                fmt_trace(f, trace)
+            }
+            Self::UnexpectedWithStr { actual, expected, trace } => {
+                write!(f, "Expected {expected}, got {actual}")?;
+                fmt_trace(f, trace)
+            }
+            Self::UnexpectedEof { expected, trace } => {
+                write!(f, "Expected {expected}, got end-of-file")?;
+                fmt_trace(f, trace)
+            }
+            Self::EmptyStruct => {
+                write!(f, "Struct must have at least one field")
+            }
+            Self::EmptyEnum => {
+                write!(f, "Enum must have at least one variant")
+            }
+        }
+    }
+}
+
+fn fmt_trace(f: &mut std::fmt::Formatter, trace: &[String]) -> std::fmt::Result {
+    writeln!(f)?;
+    write!(f, "[trace] ")?;
+    for (i, step) in trace.iter().enumerate() {
+        write!(f, "{step}")?;
+        if i + 1 < trace.len() {
+            write!(f, " > ")?;
+        }
+    }
+    Ok(())
+}
+
 impl ParserError {
     pub fn unexpected(
         actual: Option<Token>,

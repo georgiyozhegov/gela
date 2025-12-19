@@ -11,6 +11,15 @@ pub enum LexerError {
     UnterminatedString,
 }
 
+impl std::fmt::Display for LexerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::UnknownChar(ch) => write!(f, "Unknown character: `{ch}`"),
+            Self::UnterminatedString => write!(f, "Unterminated string"),
+        }
+    }
+}
+
 macro_rules! one_ch {
     ($chars:expr, $token:expr) => {{
         $chars.next();
