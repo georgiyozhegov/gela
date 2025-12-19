@@ -55,6 +55,14 @@ def test(example):
 examples = sorted(os.listdir(EXAMPLES_PATH), key=lambda file: file.lstrip(ERR_PREFIX))
 
 
+def show_output(stdout, stderr):
+    fprint(gray, "stdout", "no output" if stdout == "" else "")
+    if stdout:
+        print(stdout, end="" if stdout.endswith("\n") else "\n")
+    fprint(gray, "stderr", "no output" if stderr == "" else "")
+    if stderr:
+        print(stderr, end="" if stderr.endswith("\n") else "\n")
+
 def main():
     process = sp.run(
         ["cargo", "build"],
@@ -62,9 +70,14 @@ def main():
     )
     code = process.returncode
     if code != 0:
+        hprint("BUILD")
         fprint(gray, "build", f"{red('failed')} (exit code: {code})")
         exit(1)
     stderr = process.stderr.decode()
+    stdout = process.stderr.decode()
+    if SHOW_OUTPUT:
+        hprint("BUILD")
+        show_output("", stderr)
     warnings = stderr.count("warning:")
 
     hprint("TESTING")
@@ -74,12 +87,7 @@ def main():
         result = test(example)
         results.append(result)
         if SHOW_OUTPUT:
-            fprint(gray, "stdout", "no output" if result.stdout == "" else "")
-            if result.stdout != "":
-                print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
-            fprint(gray, "stderr", "no output" if result.stderr == "" else "")
-            if result.stderr != "":
-                print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+            show_output(result.stdout, result.stderr)
         fprint(gray, "should_fail", result.should_fail)
         fprint(gray, "has_err", result.has_err)
         fprint(gray, "code", result.code)
