@@ -8,7 +8,6 @@ EXEC_PATH = "./target/debug/gelac"
 ERR_PREFIX = "err:"
 
 NO_COLOR = "--no-color" in sys.argv
-IGNORE_ERR = "--ignore-err" in sys.argv
 SHOW_OUTPUT = "--show-output" in sys.argv
 
 RESET = "\033[0m"
