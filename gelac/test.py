@@ -1,89 +1,131 @@
 import os
 import sys
-import subprocess
+import subprocess as sp
+from dataclasses import dataclass
 
-examples = os.listdir("../examples")
+EXAMPLES_PATH = "../examples"
+EXEC_PATH = "./target/debug/gelac"
+ERR_PREFIX = "err:"
 
-FULL = "--full" in sys.argv
-NO_COLORS = "--bw" in sys.argv  # "bw" stands for black & white
-SUCCESSFUL_CODES = [0]
-WIDTH = 80
-DO_NOT_DETECT_ERR = "--no-err" in sys.argv
-SHOULD_FAIL_PREFIX = "err:"
+NO_COLOR = "--no-color" in sys.argv
+IGNORE_ERR = "--ignore-err" in sys.argv
+SHOW_OUTPUT = "--show-output" in sys.argv
 
-RED = "\033[91m"
-GREEN = "\033[92m"
-GRAY = "\033[90m"
 RESET = "\033[0m"
+red = lambda text: f"\033[91m{text}{RESET}"
+green = lambda text: f"\033[92m{text}{RESET}"
+gray = lambda text: f"\033[90m{text}{RESET}"
 
-if NO_COLORS:
-    RED = ""
-    GREEN = ""
-    GRAY = ""
-    RESET = ""
+if NO_COLOR:
+    red = lambda text: text
+    green = lambda text: text
+    gray = lambda text: text
 
-results = []
 
-print(" TESTING ".center(WIDTH, "="))
-for example in examples:
-    print(f"{GRAY}[test]{RESET} >> {example}")
-    should_fail = example.startswith(SHOULD_FAIL_PREFIX)
-    process = subprocess.run(
-        ["cargo", "run", example, "-Awarnings"],
+def hprint(name):
+    size = os.get_terminal_size()
+    print(f" {name} ".center(size.columns, "="))
+
+
+def fprint(color, name, value=""):
+    print(f"{color('[' + name + ']')}{'' if value == '' else ' '}{value}")
+
+
+@dataclass
+class TestResult:
+    example: str
+    stdout: str
+    stderr: str
+    should_fail: bool
+    has_err: bool
+    code: int
+
+
+def test(example):
+    should_fail = example.startswith(ERR_PREFIX)
+    process = sp.run(
+        [EXEC_PATH, example],
         capture_output=True,
     )
-    if FULL:
-        if process.returncode not in SUCCESSFUL_CODES and process.stderr:
-            print(f"{GRAY}[stderr]{RESET}")
-            print(process.stderr.decode())
-        if process.stdout:
-            print(f"{GRAY}[stdout]{RESET}")
-            print(process.stdout.decode())
-    if not DO_NOT_DETECT_ERR:
-        has_err = "Err" in process.stdout.decode()
-    else:
-        has_err = False
-    print(f"{GRAY}[code]{RESET} {process.returncode}")
-    print(f"{GRAY}[has_err]{RESET} {has_err}")
-    print(f"{GRAY}[should_fail]{RESET} {should_fail}")
-    print(f"{GRAY}[test]{RESET} << {example}")
+    stdout = process.stdout.decode()
+    stderr = process.stderr.decode()
+    has_err = "Err" in stdout
+    return TestResult(example, stdout, stderr, should_fail, has_err, process.returncode)
+
+
+examples = sorted(os.listdir(EXAMPLES_PATH), key=lambda file: file.lstrip(ERR_PREFIX))
+
+
+def main():
+    process = sp.run(
+        ["cargo", "build"],
+        capture_output=True,
+    )
+    code = process.returncode
+    if code != 0:
+        fprint(gray, "build", f"{red('failed')} (exit code: {code})")
+        exit(1)
+    stderr = process.stderr.decode()
+    warnings = stderr.count("warning:")
+
+    hprint("TESTING")
+    results = []
+    for example in examples:
+        fprint(gray, "test", f">> {example}")
+        result = test(example)
+        results.append(result)
+        if SHOW_OUTPUT:
+            fprint(gray, "stdout", "no output" if result.stdout == "" else "")
+            if result.stdout != "":
+                print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+            fprint(gray, "stderr", "no output" if result.stderr == "" else "")
+            if result.stderr != "":
+                print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+        fprint(gray, "should_fail", result.should_fail)
+        fprint(gray, "has_err", result.has_err)
+        fprint(gray, "code", result.code)
+        fprint(gray, "test", f"<< {example}")
+        print()
+
+    hprint("SUMMARY")
+    passed = 0
+    total = len(results)
+    for result in results:
+        if result.should_fail:
+            if result.has_err or result.code != 0:
+                passed += 1
+                if result.code != 0:
+                    fprint(
+                        green,
+                        "failed",
+                        f"{result.example} (should_fail, exit code: {result.code})",
+                    )
+                else:
+                    fprint(green, "failed", f"{result.example} (should_fail, has_err)")
+            else:
+                fprint(red, "passed", f"{result.example} (should_fail)")
+        else:
+            if not result.has_err and result.code == 0:
+                passed += 1
+                fprint(green, "passed", result.example)
+            else:
+                if result.code != 0:
+                    fprint(
+                        red, "failed", f"{result.example} (exit code: {result.code})"
+                    )
+                else:
+                    fprint(red, "failed", f"{result.example} (has_err)")
+
     print()
-    results.append((example, process.returncode, has_err, should_fail))
+    warnings = f" (found {warnings} warnings)" if warnings != 0 else ""
+    fprint(gray, "build", f"ok{warnings}")
+    score = (passed / total) * 100
+    fprint(gray, "score", f"{passed}/{total}, {score:.2f}% passed")
+    color, message = (green, "passed") if passed == total else (red, "failed")
+    fprint(gray, "result", color(message))
+    if message != "passed":
+        exit(1)
 
-print(" SUMMARY ".center(WIDTH, "="))
-passed = 0
-total = len(results)
-for example, code, has_err, should_fail in results:
-    passed = code in SUCCESSFUL_CODES and not has_err
-    if passed:
-        if should_fail:
-            print(f"{RED}[passed]{RESET} {example} (should_fail)")
-        else:
-            passed += 1
-            print(f"{GREEN}[passed]{RESET} {example}")
-    else:
-        if should_fail:
-            if has_err:
-                print(f"{GREEN}[failed]{RESET} {example} (has_err, should_fail)")
-            else:
-                print(f"{GREEN}[failed]{RESET} {example} (exit code: {code}, should_fail)")
-            passed += 1
-        else:
-            if has_err:
-                ignored = ": ignored" if DO_NOT_DETECT_ERR else ""
-                print(f"{RED}[failed]{RESET} {example} (has_err{ignored})")
-            else:
-                print(f"{RED}[failed]{RESET} {example} (exit code: {code})")
 
-print()
-if DO_NOT_DETECT_ERR:
-    print(f"{GRAY}[note]{RESET} has_err ignored")
-print(f"{GRAY}[score]{RESET} {passed}/{total} passed")
-
-(status, color) = ("passed", GREEN) if passed == total else ("failed", RED)
-print(f"{GRAY}[result]{RESET} {color}{status}{RESET}")
-
-if status == "passed":
-    exit(0)
-else:
-    exit(1)
+if __name__ == "__main__":
+    main()
