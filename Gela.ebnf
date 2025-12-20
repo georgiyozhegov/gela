@@ -126,3 +126,9 @@ digit =
 
 string =
   '"' , { ? any char except quote ? } , '"' ;
+
+comment =
+  "#" , { ? any char except "\n" ? } , "\n" ;
+
+multiline_comment =
+  "#>" , { ? any char except "<#" ? } , "<#" ;

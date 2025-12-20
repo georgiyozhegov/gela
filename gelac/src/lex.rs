@@ -62,6 +62,17 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Result<Token, LexerError>> {
             chars.next(); // Skip the trailing quote
             Some(Ok(Token::String(lexeme)))
         }
+        ('#', Some('>')) => {
+            while chars.peek().is_some() {
+                eat(chars, |ch| *ch != '<');
+                chars.next();
+                if matches!(chars.peek(), Some('#')) {
+                    chars.next();
+                    break;
+                }
+            }
+            token(chars)
+        }
         ('#', _) => {
             eat(chars, |ch| *ch != '\n'); // Skip until the next line
             token(chars)
