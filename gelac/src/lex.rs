@@ -214,6 +214,12 @@ pub enum NameKind {
     Type,
 }
 
+macro_rules! write_token {
+    ($f:expr, $token:expr) => {
+        write!($f, "`{}`", $token)
+    };
+}
+
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -227,47 +233,47 @@ impl std::fmt::Display for Token {
             //< Literals
 
             //> Keywords
-            Self::Let => write!(f, "`let`"),
-            Self::Struct => write!(f, "`struct`"),
-            Self::Enum => write!(f, "`enum`"),
-            Self::Import => write!(f, "`import`"),
-            Self::As => write!(f, "`as`"),
-            Self::Var => write!(f, "`var`"),
-            Self::In => write!(f, "`in`"),
-            Self::When => write!(f, "`when`"),
-            Self::Then => write!(f, "`then`"),
-            Self::Else => write!(f, "`else`"),
-            Self::If => write!(f, "`if`"),
-            Self::New => write!(f, "`new`"),
-            Self::And => write!(f, "`and`"),
-            Self::Or => write!(f, "`or`"),
+            Self::Let => write_token!(f, "let"),
+            Self::Struct => write_token!(f, "struct"),
+            Self::Enum => write_token!(f, "enum"),
+            Self::Import => write_token!(f, "import"),
+            Self::As => write_token!(f, "as"),
+            Self::Var => write_token!(f, "var"),
+            Self::In => write_token!(f, "in"),
+            Self::When => write_token!(f, "when"),
+            Self::Then => write_token!(f, "then"),
+            Self::Else => write_token!(f, "else"),
+            Self::If => write_token!(f, "if"),
+            Self::New => write_token!(f, "new"),
+            Self::And => write_token!(f, "and"),
+            Self::Or => write_token!(f, "or"),
             //< Keywords
 
             //> Operators
-            Self::Equal => write!(f, "`=`"),
-            Self::OpenCurly => write!(f, "`{{`"),
-            Self::CloseCurly => write!(f, "`}}`"),
-            Self::OpenRound => write!(f, "`(`"),
-            Self::CloseRound => write!(f, "`)`"),
-            Self::Comma => write!(f, "`,`"),
-            Self::Arrow => write!(f, "`->`"),
-            Self::Pipe => write!(f, "`|`"),
-            Self::Colon => write!(f, "`:`"),
-            Self::ColonColon => write!(f, "`::`"),
-            Self::Dollar => write!(f, "`$`"),
-            Self::EqualEqual => write!(f, "`==`"),
-            Self::NotEqual => write!(f, "`!=`"),
-            Self::LessEqual => write!(f, "`<=`"),
-            Self::GreaterEqual => write!(f, "`>=`"),
-            Self::Less => write!(f, "`<`"),
-            Self::Greater => write!(f, "`>`"),
-            Self::Plus => write!(f, "`+`"),
-            Self::Minus => write!(f, "`-`"),
-            Self::Asterisk => write!(f, "`*`"),
-            Self::Slash => write!(f, "`/`"),
-            Self::Percent => write!(f, "`%`"),
-            Self::Caret => write!(f, "`^`"),
-            Self::Dot => write!(f, "`.`"),
+            Self::Equal => write_token!(f, "="),
+            Self::OpenCurly => write_token!(f, "{{"),
+            Self::CloseCurly => write_token!(f, "}}"),
+            Self::OpenRound => write_token!(f, "("),
+            Self::CloseRound => write_token!(f, ")"),
+            Self::Comma => write_token!(f, ","),
+            Self::Arrow => write_token!(f, "->"),
+            Self::Pipe => write_token!(f, "|"),
+            Self::Colon => write_token!(f, ":"),
+            Self::ColonColon => write_token!(f, "::"),
+            Self::Dollar => write_token!(f, "$"),
+            Self::EqualEqual => write_token!(f, "=="),
+            Self::NotEqual => write_token!(f, "!="),
+            Self::LessEqual => write_token!(f, "<="),
+            Self::GreaterEqual => write_token!(f, ">="),
+            Self::Less => write_token!(f, "<"),
+            Self::Greater => write_token!(f, ">"),
+            Self::Plus => write_token!(f, "+"),
+            Self::Minus => write_token!(f, "-"),
+            Self::Asterisk => write_token!(f, "*"),
+            Self::Slash => write_token!(f, "/"),
+            Self::Percent => write_token!(f, "%"),
+            Self::Caret => write_token!(f, "^"),
+            Self::Dot => write_token!(f, "."),
             //< Operators
         }
     }
