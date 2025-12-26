@@ -1,5 +1,4 @@
 use crate::lex::{NameKind, Token};
-use crate::parse::ParserError;
 
 //> Statement
 #[derive(Debug)]
@@ -25,28 +24,8 @@ impl std::fmt::Debug for Name {
 #[derive(Debug)]
 pub struct StructFields(pub Vec<(Name, Name)>);
 
-impl StructFields {
-    pub fn check(&self) -> Result<(), ParserError> {
-        if self.0.is_empty() {
-            Err(ParserError::EmptyStruct)
-        } else {
-            Ok(())
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct EnumVariants(pub Vec<Name>);
-
-impl EnumVariants {
-    pub fn check(&self) -> Result<(), ParserError> {
-        if self.0.is_empty() {
-            Err(ParserError::EmptyEnum)
-        } else {
-            Ok(())
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct NamesWithAliases(pub Vec<(Name, Option<Name>)>);

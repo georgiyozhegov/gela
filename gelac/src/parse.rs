@@ -35,9 +35,7 @@ pub enum ParserError {
     UnexpectedEof {
         expected: String,
         trace: Vec<String>,
-    }, // Location can be restored
-    EmptyStruct,
-    EmptyEnum,
+    },
 }
 
 impl std::fmt::Display for ParserError {
@@ -62,12 +60,6 @@ impl std::fmt::Display for ParserError {
             Self::UnexpectedEof { expected, trace } => {
                 write!(f, "Expected {expected}, got end-of-file")?;
                 fmt_trace(f, trace)
-            }
-            Self::EmptyStruct => {
-                write!(f, "Struct must have at least one field")
-            }
-            Self::EmptyEnum => {
-                write!(f, "Enum must have at least one variant")
             }
         }
     }
@@ -302,9 +294,7 @@ impl Parser {
             let field = (name, ty);
             fields.push(field);
         }
-        let fields = ast::StructFields(fields);
-        fields.check()?;
-        Ok(fields)
+        Ok(ast::StructFields(fields))
     }
     //< Struct
 
@@ -347,9 +337,7 @@ impl Parser {
             }
             variants.push(variant);
         }
-        let variants = ast::EnumVariants(variants);
-        variants.check()?;
-        Ok(variants)
+        Ok(ast::EnumVariants(variants))
     }
     //< Enum
 
