@@ -220,10 +220,10 @@ impl Parser {
 //> Statement
 impl Parser {
     pub fn parse_statement(&mut self) -> Result<ast::Statement, ParserError> {
-        self.step(Self::parse_statement_wo_mark, &mut vec![], "Statement")
+        self.step(Self::_parse_statement, &mut vec![], "Statement")
     }
 
-    fn parse_statement_wo_mark(
+    fn _parse_statement(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
@@ -245,10 +245,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
-        self.step(Self::parse_let_wo_mark, trace, "Let")
+        self.step(Self::_parse_let, trace, "Let")
     }
 
-    pub fn parse_let_wo_mark(
+    pub fn _parse_let(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
@@ -265,10 +265,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
-        self.step(Self::parse_struct_wo_mark, trace, "Struct")
+        self.step(Self::_parse_struct, trace, "Struct")
     }
 
-    pub fn parse_struct_wo_mark(
+    pub fn _parse_struct(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
@@ -284,10 +284,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::StructFields, ParserError> {
-        self.step(Self::parse_struct_fields_wo_mark, trace, "StructFields")
+        self.step(Self::_parse_struct_fields, trace, "StructFields")
     }
 
-    pub fn parse_struct_fields_wo_mark(
+    pub fn _parse_struct_fields(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::StructFields, ParserError> {
@@ -313,10 +313,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
-        self.step(Self::parse_enum_wo_mark, trace, "Enum")
+        self.step(Self::_parse_enum, trace, "Enum")
     }
 
-    pub fn parse_enum_wo_mark(
+    pub fn _parse_enum(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
@@ -332,10 +332,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::EnumVariants, ParserError> {
-        self.step(Self::parse_enum_variants_wo_mark, trace, "EnumVariants")
+        self.step(Self::_parse_enum_variants, trace, "EnumVariants")
     }
 
-    pub fn parse_enum_variants_wo_mark(
+    pub fn _parse_enum_variants(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::EnumVariants, ParserError> {
@@ -358,10 +358,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
-        self.step(Self::parse_import_wo_mark, trace, "Import")
+        self.step(Self::_parse_import, trace, "Import")
     }
 
-    pub fn parse_import_wo_mark(
+    pub fn _parse_import(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Statement, ParserError> {
@@ -391,13 +391,13 @@ impl Parser {
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::NamesWithAliases, ParserError> {
         self.step(
-            Self::parse_names_with_aliases_wo_mark,
+            Self::_parse_names_with_aliases,
             trace,
             "NamesWithAliases",
         )
     }
 
-    pub fn parse_names_with_aliases_wo_mark(
+    pub fn _parse_names_with_aliases(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::NamesWithAliases, ParserError> {
@@ -428,10 +428,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_expression_wo_mark, trace, "Expression")
+        self.step(Self::_parse_expression, trace, "Expression")
     }
 
-    pub fn parse_expression_wo_mark(
+    pub fn _parse_expression(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -459,10 +459,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_abstraction_wo_mark, trace, "Abstraction")
+        self.step(Self::_parse_abstraction, trace, "Abstraction")
     }
 
-    pub fn parse_abstraction_wo_mark(
+    pub fn _parse_abstraction(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -479,10 +479,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_bind_wo_mark, trace, "Bind")
+        self.step(Self::_parse_bind, trace, "Bind")
     }
 
-    pub fn parse_bind_wo_mark(
+    pub fn _parse_bind(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -502,10 +502,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_when_wo_mark, trace, "When")
+        self.step(Self::_parse_when, trace, "When")
     }
 
-    pub fn parse_when_wo_mark(
+    pub fn _parse_when(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -546,10 +546,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_if_wo_mark, trace, "If")
+        self.step(Self::_parse_if, trace, "If")
     }
 
-    pub fn parse_if_wo_mark(
+    pub fn _parse_if(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -570,10 +570,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_new_wo_mark, trace, "New")
+        self.step(Self::_parse_new, trace, "New")
     }
 
-    pub fn parse_new_wo_mark(
+    pub fn _parse_new(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -589,10 +589,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::NewFields, ParserError> {
-        self.step(Self::parse_new_fields_wo_mark, trace, "NewFields")
+        self.step(Self::_parse_new_fields, trace, "NewFields")
     }
 
-    pub fn parse_new_fields_wo_mark(
+    pub fn _parse_new_fields(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::NewFields, ParserError> {
@@ -616,10 +616,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_type_cast_wo_mark, trace, "TypeCast")
+        self.step(Self::_parse_type_cast, trace, "TypeCast")
     }
 
-    pub fn parse_type_cast_wo_mark(
+    pub fn _parse_type_cast(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -663,10 +663,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_infix_lowest_wo_mark, trace, "InfixLowest")
+        self.step(Self::_parse_infix_lowest, trace, "InfixLowest")
     }
 
-    pub fn parse_infix_lowest_wo_mark(
+    pub fn _parse_infix_lowest(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -688,10 +688,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_infix_lower_wo_mark, trace, "InfixLower")
+        self.step(Self::_parse_infix_lower, trace, "InfixLower")
     }
 
-    pub fn parse_infix_lower_wo_mark(
+    pub fn _parse_infix_lower(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -713,9 +713,9 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_infix_low_wo_mark, trace, "InfixLow")
+        self.step(Self::_parse_infix_low, trace, "InfixLow")
     }
-    pub fn parse_infix_low_wo_mark(
+    pub fn _parse_infix_low(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -747,9 +747,9 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_infix_high_wo_mark, trace, "InfixHigh")
+        self.step(Self::_parse_infix_high, trace, "InfixHigh")
     }
-    pub fn parse_infix_high_wo_mark(
+    pub fn _parse_infix_high(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -771,10 +771,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_infix_higher_wo_mark, trace, "InfixHigher")
+        self.step(Self::_parse_infix_higher, trace, "InfixHigher")
     }
 
-    pub fn parse_infix_higher_wo_mark(
+    pub fn _parse_infix_higher(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -799,10 +799,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_infix_highest_wo_mark, trace, "InfixHighest")
+        self.step(Self::_parse_infix_highest, trace, "InfixHighest")
     }
 
-    pub fn parse_infix_highest_wo_mark(
+    pub fn _parse_infix_highest(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -825,10 +825,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_application_wo_mark, trace, "Application")
+        self.step(Self::_parse_application, trace, "Application")
     }
 
-    pub fn parse_application_wo_mark(
+    pub fn _parse_application(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -861,10 +861,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self.step(Self::parse_property_wo_mark, trace, "Property")
+        self.step(Self::_parse_property, trace, "Property")
     }
 
-    pub fn parse_property_wo_mark(
+    pub fn _parse_property(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
@@ -894,10 +894,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Atom, ParserError> {
-        self.step(Self::parse_atom_wo_mark, trace, "Atom")
+        self.step(Self::_parse_atom, trace, "Atom")
     }
 
-    pub fn parse_atom_wo_mark(
+    pub fn _parse_atom(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Atom, ParserError> {
@@ -921,10 +921,10 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Atom, ParserError> {
-        self.step(Self::parse_parenthesized_wo_mark, trace, "Parenthesized")
+        self.step(Self::_parse_parenthesized, trace, "Parenthesized")
     }
 
-    pub fn parse_parenthesized_wo_mark(
+    pub fn _parse_parenthesized(
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::Atom, ParserError> {
