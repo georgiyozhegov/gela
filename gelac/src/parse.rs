@@ -1,7 +1,12 @@
 use crate::ast;
 use crate::lex::Token;
 
-pub fn parse(tokens: Vec<Token>) -> (Vec<Result<ast::Statement, ParserError>>, ast::ExpressionArena) {
+pub fn parse(
+    tokens: Vec<Token>,
+) -> (
+    Vec<Result<ast::Statement, ParserError>>,
+    ast::ExpressionArena,
+) {
     let mut parser = Parser::new(tokens);
     let mut program = Vec::new();
     while parser.peek().is_some() {
@@ -38,11 +43,19 @@ pub enum ParserError {
 impl std::fmt::Display for ParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::Unexpected { actual, expected, trace } => {
+            Self::Unexpected {
+                actual,
+                expected,
+                trace,
+            } => {
                 write!(f, "Expected {expected}, got {actual}")?;
                 fmt_trace(f, trace)
             }
-            Self::UnexpectedWithStr { actual, expected, trace } => {
+            Self::UnexpectedWithStr {
+                actual,
+                expected,
+                trace,
+            } => {
                 write!(f, "Expected {expected}, got {actual}")?;
                 fmt_trace(f, trace)
             }
@@ -60,7 +73,10 @@ impl std::fmt::Display for ParserError {
     }
 }
 
-fn fmt_trace(f: &mut std::fmt::Formatter, trace: &[String]) -> std::fmt::Result {
+fn fmt_trace(
+    f: &mut std::fmt::Formatter,
+    trace: &[String],
+) -> std::fmt::Result {
     writeln!(f)?;
     write!(f, "[trace] ")?;
     for (i, step) in trace.iter().enumerate() {
@@ -120,7 +136,11 @@ struct Parser {
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, cursor: 0, ea: ast::ExpressionArena::new() }
+        Self {
+            tokens,
+            cursor: 0,
+            ea: ast::ExpressionArena::new(),
+        }
     }
 
     fn eat(
@@ -449,7 +469,9 @@ impl Parser {
         let parameter = self.eat_name(trace)?;
         self.eat(Token::Arrow, trace)?;
         let body = self.parse_expression(trace)?;
-        Ok(self.ea.allocate(ast::Expression::Abstraction(parameter, body)))
+        Ok(self
+            .ea
+            .allocate(ast::Expression::Abstraction(parameter, body)))
     }
 
     //> Bind
@@ -537,11 +559,9 @@ impl Parser {
         let then = self.parse_expression(trace)?;
         self.eat(Token::Else, trace)?;
         let otherwise = self.parse_expression(trace)?;
-        Ok(self.ea.allocate(ast::Expression::If(
-            condition,
-            then,
-            otherwise,
-        )))
+        Ok(self
+            .ea
+            .allocate(ast::Expression::If(condition, then, otherwise)))
     }
     //< If
 
@@ -562,7 +582,8 @@ impl Parser {
         self.eat(Token::OpenCurly, trace)?;
         let fields = self.parse_new_fields(trace)?;
         self.eat(Token::CloseCurly, trace)?;
-        Ok(self.ea.allocate(ast::Expression::New(name, fields))) }
+        Ok(self.ea.allocate(ast::Expression::New(name, fields)))
+    }
 
     pub fn parse_new_fields(
         &mut self,
@@ -613,22 +634,30 @@ impl Parser {
     //< TypeCast
 
     //> Infix
-    fn _parse_infix(&mut self,
+    fn _parse_infix(
+        &mut self,
         is_operator: impl Fn(&Self) -> bool,
-        parse_lhs: impl Fn(&mut Self, &mut Vec<&'static str>) -> Result<ast::ExpressionRef, ParserError>,
-        parse_rhs: impl Fn(&mut Self, &mut Vec<&'static str>) -> Result<ast::ExpressionRef, ParserError>,
+        parse_lhs: impl Fn(
+            &mut Self,
+            &mut Vec<&'static str>,
+        ) -> Result<ast::ExpressionRef, ParserError>,
+        parse_rhs: impl Fn(
+            &mut Self,
+            &mut Vec<&'static str>,
+        ) -> Result<ast::ExpressionRef, ParserError>,
         trace: &mut Vec<&'static str>,
-        ) -> Result<ast::ExpressionRef, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         let mut lhs = parse_lhs(self, trace)?;
         if is_operator(self) {
             let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
             let rhs = parse_rhs(self, trace)?;
-            lhs =
-                self.ea.allocate(ast::Expression::Binary(operator, lhs, rhs));
+            lhs = self
+                .ea
+                .allocate(ast::Expression::Binary(operator, lhs, rhs));
         }
         Ok(lhs)
     }
-    
+
     //> InfixLowest
     pub fn parse_infix_lowest(
         &mut self,
@@ -641,7 +670,12 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self._parse_infix(Self::is_infix_lowest_operator, Self::parse_infix_lower, Self::parse_infix_lowest, trace)
+        self._parse_infix(
+            Self::is_infix_lowest_operator,
+            Self::parse_infix_lower,
+            Self::parse_infix_lowest,
+            trace,
+        )
     }
 
     fn is_infix_lowest_operator(&self) -> bool {
@@ -661,7 +695,12 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self._parse_infix(Self::is_infix_lower_operator, Self::parse_infix_low, Self::parse_infix_lower, trace)
+        self._parse_infix(
+            Self::is_infix_lower_operator,
+            Self::parse_infix_low,
+            Self::parse_infix_lower,
+            trace,
+        )
     }
 
     fn is_infix_lower_operator(&self) -> bool {
@@ -680,7 +719,12 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self._parse_infix(Self::is_infix_low_operator, Self::parse_infix_high, Self::parse_infix_low, trace)
+        self._parse_infix(
+            Self::is_infix_low_operator,
+            Self::parse_infix_high,
+            Self::parse_infix_low,
+            trace,
+        )
     }
 
     fn is_infix_low_operator(&self) -> bool {
@@ -709,7 +753,12 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self._parse_infix(Self::is_infix_high_operator, Self::parse_infix_higher, Self::parse_infix_high, trace)
+        self._parse_infix(
+            Self::is_infix_high_operator,
+            Self::parse_infix_higher,
+            Self::parse_infix_high,
+            trace,
+        )
     }
 
     fn is_infix_high_operator(&self) -> bool {
@@ -729,7 +778,12 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self._parse_infix(Self::is_infix_higher_operator, Self::parse_infix_highest, Self::parse_infix_higher, trace)
+        self._parse_infix(
+            Self::is_infix_higher_operator,
+            Self::parse_infix_highest,
+            Self::parse_infix_higher,
+            trace,
+        )
     }
 
     fn is_infix_higher_operator(&self) -> bool {
@@ -752,7 +806,12 @@ impl Parser {
         &mut self,
         trace: &mut Vec<&'static str>,
     ) -> Result<ast::ExpressionRef, ParserError> {
-        self._parse_infix(Self::is_infix_highest_operator, Self::parse_application, Self::parse_infix_highest, trace)
+        self._parse_infix(
+            Self::is_infix_highest_operator,
+            Self::parse_application,
+            Self::parse_infix_highest,
+            trace,
+        )
     }
 
     fn is_infix_highest_operator(&self) -> bool {
