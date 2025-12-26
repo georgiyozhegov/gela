@@ -13,7 +13,7 @@ pub fn run(source: String) {
         }
         Ok(tokens) => tokens,
     };
-    let statements = parse(tokens);
+    let (statements, ea) = parse(tokens);
     for s in statements {
         let s = match s {
             Err(error) => {
@@ -23,5 +23,8 @@ pub fn run(source: String) {
             Ok(s) => s,
         };
         println!("{s:#?}");
+    }
+    for (i, expression) in ea.0.iter().enumerate() {
+        println!("(ref {i}): {expression:?}")
     }
 }

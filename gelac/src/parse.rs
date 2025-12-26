@@ -1,12 +1,14 @@
 use crate::ast;
 use crate::lex::Token;
 
-pub fn parse(tokens: Vec<Token>) -> Vec<Result<ast::Statement, ParserError>> {
+pub fn parse(tokens: Vec<Token>) -> (Vec<Result<ast::Statement, ParserError>>, ast::ExpressionArena) {
     let mut parser = Parser::new(tokens);
-    std::iter::from_fn(move || {
-        (parser.peek().is_some()).then(|| parser.parse_statement())
-    })
-    .collect()
+    let mut program = Vec::new();
+    while parser.peek().is_some() {
+        let statement = parser.parse_statement();
+        program.push(statement);
+    }
+    (program, parser.ea)
 }
 
 fn expected_atom_message() -> String {
@@ -113,11 +115,12 @@ impl ParserError {
 struct Parser {
     tokens: Vec<Token>,
     cursor: usize,
+    ea: ast::ExpressionArena,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, cursor: 0 }
+        Self { tokens, cursor: 0, ea: ast::ExpressionArena::new() }
     }
 
     fn eat(
@@ -404,14 +407,14 @@ impl Parser {
     pub fn parse_expression(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_expression_wo_mark, trace, "Expression")
     }
 
     pub fn parse_expression_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         match self.peek() {
             Some(Token::Name(_, _))
                 if matches!(self.nth(1), Some(Token::Arrow)) =>
@@ -435,40 +438,40 @@ impl Parser {
     pub fn parse_abstraction(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_abstraction_wo_mark, trace, "Abstraction")
     }
 
     pub fn parse_abstraction_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         let parameter = self.eat_name(trace)?;
         self.eat(Token::Arrow, trace)?;
         let body = self.parse_expression(trace)?;
-        Ok(ast::Expression::Abstraction(parameter, Box::new(body)))
+        Ok(self.ea.allocate(ast::Expression::Abstraction(parameter, body)))
     }
 
     //> Bind
     pub fn parse_bind(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_bind_wo_mark, trace, "Bind")
     }
 
     pub fn parse_bind_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.eat(Token::Var, trace)?;
         let name = self.eat_name(trace)?;
         self.eat(Token::Equal, trace)?;
         let value = self.parse_expression(trace)?;
         self.eat(Token::In, trace)?;
         let body = self.parse_expression(trace)?;
-        let variable = ast::BindVariable(name, Box::new(value));
-        Ok(ast::Expression::Bind(variable, Box::new(body)))
+        let variable = ast::BindVariable(name, value);
+        Ok(self.ea.allocate(ast::Expression::Bind(variable, body)))
     }
     //< Bind
 
@@ -476,14 +479,14 @@ impl Parser {
     pub fn parse_when(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_when_wo_mark, trace, "When")
     }
 
     pub fn parse_when_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.eat(Token::When, trace)?;
         let mut branches = Vec::new();
         // Skip optional `|`
@@ -511,8 +514,8 @@ impl Parser {
         }
         self.eat(Token::Else, trace)?;
         let default = self.parse_expression(trace)?;
-        let branches = ast::WhenBranches(branches, Box::new(default));
-        Ok(ast::Expression::When(branches))
+        let branches = ast::WhenBranches(branches, default);
+        Ok(self.ea.allocate(ast::Expression::When(branches)))
     }
     //< When
 
@@ -520,25 +523,25 @@ impl Parser {
     pub fn parse_if(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_if_wo_mark, trace, "If")
     }
 
     pub fn parse_if_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.eat(Token::If, trace)?;
         let condition = self.parse_expression(trace)?;
         self.eat(Token::Then, trace)?;
         let then = self.parse_expression(trace)?;
         self.eat(Token::Else, trace)?;
         let otherwise = self.parse_expression(trace)?;
-        Ok(ast::Expression::If(
-            Box::new(condition),
-            Box::new(then),
-            Box::new(otherwise),
-        ))
+        Ok(self.ea.allocate(ast::Expression::If(
+            condition,
+            then,
+            otherwise,
+        )))
     }
     //< If
 
@@ -546,21 +549,20 @@ impl Parser {
     pub fn parse_new(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_new_wo_mark, trace, "New")
     }
 
     pub fn parse_new_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.eat(Token::New, trace)?;
         let name = self.eat_name(trace)?;
         self.eat(Token::OpenCurly, trace)?;
         let fields = self.parse_new_fields(trace)?;
         self.eat(Token::CloseCurly, trace)?;
-        Ok(ast::Expression::New(name, fields))
-    }
+        Ok(self.ea.allocate(ast::Expression::New(name, fields))) }
 
     pub fn parse_new_fields(
         &mut self,
@@ -592,44 +594,54 @@ impl Parser {
     pub fn parse_type_cast(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_type_cast_wo_mark, trace, "TypeCast")
     }
 
     pub fn parse_type_cast_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         let mut value = self.parse_infix_lowest(trace)?;
         while self.is_colon_colon() {
             self.next();
             let ty = self.eat_name(trace)?;
-            value = ast::Expression::TypeCast(Box::new(value), ty);
+            value = self.ea.allocate(ast::Expression::TypeCast(value, ty));
         }
         Ok(value)
     }
     //< TypeCast
 
+    //> Infix
+    fn _parse_infix(&mut self,
+        is_operator: impl Fn(&Self) -> bool,
+        parse_lhs: impl Fn(&mut Self, &mut Vec<&'static str>) -> Result<ast::ExpressionRef, ParserError>,
+        parse_rhs: impl Fn(&mut Self, &mut Vec<&'static str>) -> Result<ast::ExpressionRef, ParserError>,
+        trace: &mut Vec<&'static str>,
+        ) -> Result<ast::ExpressionRef, ParserError> {
+        let mut lhs = parse_lhs(self, trace)?;
+        if is_operator(self) {
+            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
+            let rhs = parse_rhs(self, trace)?;
+            lhs =
+                self.ea.allocate(ast::Expression::Binary(operator, lhs, rhs));
+        }
+        Ok(lhs)
+    }
+    
     //> InfixLowest
     pub fn parse_infix_lowest(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_infix_lowest_wo_mark, trace, "InfixLowest")
     }
 
     pub fn parse_infix_lowest_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_infix_lower(trace)?;
-        if self.is_infix_lowest_operator() {
-            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_lowest(trace)?;
-            lhs =
-                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
-        }
-        Ok(lhs)
+    ) -> Result<ast::ExpressionRef, ParserError> {
+        self._parse_infix(Self::is_infix_lowest_operator, Self::parse_infix_lower, Self::parse_infix_lowest, trace)
     }
 
     fn is_infix_lowest_operator(&self) -> bool {
@@ -641,22 +653,15 @@ impl Parser {
     pub fn parse_infix_lower(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_infix_lower_wo_mark, trace, "InfixLower")
     }
 
     pub fn parse_infix_lower_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_infix_low(trace)?;
-        if self.is_infix_lower_operator() {
-            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_lowest(trace)?;
-            lhs =
-                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
-        }
-        Ok(lhs)
+    ) -> Result<ast::ExpressionRef, ParserError> {
+        self._parse_infix(Self::is_infix_lower_operator, Self::parse_infix_low, Self::parse_infix_lower, trace)
     }
 
     fn is_infix_lower_operator(&self) -> bool {
@@ -668,21 +673,14 @@ impl Parser {
     pub fn parse_infix_low(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_infix_low_wo_mark, trace, "InfixLow")
     }
     pub fn parse_infix_low_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_infix_high(trace)?;
-        if self.is_infix_low_operator() {
-            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_low(trace)?;
-            lhs =
-                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
-        }
-        Ok(lhs)
+    ) -> Result<ast::ExpressionRef, ParserError> {
+        self._parse_infix(Self::is_infix_low_operator, Self::parse_infix_high, Self::parse_infix_low, trace)
     }
 
     fn is_infix_low_operator(&self) -> bool {
@@ -704,21 +702,14 @@ impl Parser {
     pub fn parse_infix_high(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_infix_high_wo_mark, trace, "InfixHigh")
     }
     pub fn parse_infix_high_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_infix_higher(trace)?;
-        if self.is_infix_high_operator() {
-            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_high(trace)?;
-            lhs =
-                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
-        }
-        Ok(lhs)
+    ) -> Result<ast::ExpressionRef, ParserError> {
+        self._parse_infix(Self::is_infix_high_operator, Self::parse_infix_higher, Self::parse_infix_high, trace)
     }
 
     fn is_infix_high_operator(&self) -> bool {
@@ -730,22 +721,15 @@ impl Parser {
     pub fn parse_infix_higher(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_infix_higher_wo_mark, trace, "InfixHigher")
     }
 
     pub fn parse_infix_higher_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_infix_highest(trace)?;
-        if self.is_infix_higher_operator() {
-            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_higher(trace)?;
-            lhs =
-                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
-        }
-        Ok(lhs)
+    ) -> Result<ast::ExpressionRef, ParserError> {
+        self._parse_infix(Self::is_infix_higher_operator, Self::parse_infix_highest, Self::parse_infix_higher, trace)
     }
 
     fn is_infix_higher_operator(&self) -> bool {
@@ -760,41 +744,35 @@ impl Parser {
     pub fn parse_infix_highest(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_infix_highest_wo_mark, trace, "InfixHighest")
     }
 
     pub fn parse_infix_highest_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
-        let mut lhs = self.parse_application(trace)?;
-        if self.is_infix_highest_operator() {
-            let operator = ast::BinaryOperator(self.next().unwrap()); // Checked
-            let rhs = self.parse_infix_highest(trace)?;
-            lhs =
-                ast::Expression::Binary(operator, Box::new(lhs), Box::new(rhs));
-        }
-        Ok(lhs)
+    ) -> Result<ast::ExpressionRef, ParserError> {
+        self._parse_infix(Self::is_infix_highest_operator, Self::parse_application, Self::parse_infix_highest, trace)
     }
 
     fn is_infix_highest_operator(&self) -> bool {
         matches!(self.peek(), Some(Token::Caret))
     }
     //< InfixHighest
+    //< Infix
 
     //> Application
     pub fn parse_application(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_application_wo_mark, trace, "Application")
     }
 
     pub fn parse_application_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         let f = self.parse_property(trace)?;
         let mut arguments = Vec::new();
         while self.is_atom() {
@@ -803,7 +781,7 @@ impl Parser {
         if arguments.is_empty() {
             return Ok(f);
         }
-        Ok(ast::Expression::Application(Box::new(f), arguments))
+        Ok(self.ea.allocate(ast::Expression::Application(f, arguments)))
     }
 
     fn is_atom(&self) -> bool {
@@ -823,14 +801,14 @@ impl Parser {
     pub fn parse_property(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         self.step(Self::parse_property_wo_mark, trace, "Property")
     }
 
     pub fn parse_property_wo_mark(
         &mut self,
         trace: &mut Vec<&'static str>,
-    ) -> Result<ast::Expression, ParserError> {
+    ) -> Result<ast::ExpressionRef, ParserError> {
         let a = self.parse_atom(trace)?;
         let mut properties = Vec::new();
         while self.is_dot() {
@@ -846,9 +824,9 @@ impl Parser {
             }
         }
         if properties.is_empty() {
-            return Ok(ast::Expression::Atom(a));
+            return Ok(self.ea.allocate(ast::Expression::Atom(a)));
         }
-        Ok(ast::Expression::Property(a, properties))
+        Ok(self.ea.allocate(ast::Expression::Property(a, properties)))
     }
     //< Property
 
@@ -894,7 +872,7 @@ impl Parser {
         // "(" was consumed
         let inner = self.parse_expression(trace)?;
         self.eat(Token::CloseRound, trace)?;
-        Ok(ast::Atom::Parenthesized(Box::new(inner)))
+        Ok(ast::Atom::Parenthesized(inner))
     }
     //< Parenthesized
     //< Atom
