@@ -42,9 +42,24 @@ fn token(chars: &mut Peekable<Chars>) -> Option<Result<Token, LexerError>> {
                 chars,
                 |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_'),
             );
-            // Peek suffix: either "?" or "!"
-            if chars.peek().is_some_and(|ch| matches!(ch, '?' | '!')) {
-                lexeme.push(chars.next().unwrap());
+            // Peek suffix: either `?`, `!` or `?!`
+            match chars.peek() {
+                Some('?') => {
+                    chars.next();
+                    lexeme.push('?');
+                    match chars.peek() {
+                        Some('!') => {
+                            chars.next();
+                            lexeme.push('!');
+                        }
+                        _ => {},
+                    }
+                }
+                Some('!') => {
+                    chars.next();
+                    lexeme.push('!');
+                }
+                _ => {},
             }
             Some(Ok(name_or_keyword(lexeme)))
         }

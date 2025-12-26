@@ -1,7 +1,7 @@
 let age = 16
 let grown_up? = age >= 18
 let oops! = panic "Oops!"
-let allowed_in!? = age ->
+let allowed_in?! = age ->
     when
     | age <= 18 then false
     | age >= 1000 then panic "Too damn old"
